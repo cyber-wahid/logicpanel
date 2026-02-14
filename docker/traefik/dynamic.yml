@@ -1,0 +1,115 @@
+# Traefik Dynamic Configuration for LogicDock
+# Middlewares and error handling only (routers defined in docker-compose.yml labels)
+
+http:
+  # Services
+  services:
+    logicdock-app:
+      loadBalancer:
+        servers:
+          - url: "http://logicdock_app:80"
+        healthCheck:
+          path: "/public/health.php"
+          interval: "30s"
+          timeout: "5s"
+    
+    terminal-gateway:
+      loadBalancer:
+        servers:
+          - url: "http://logicdock_gateway:3002"
+
+  # Routers
+  routers:
+    # User Panel (Port 777)
+    userpanel:
+      entryPoints:
+        - userpanel
+      rule: "PathPrefix(`/`)"
+      service: logicdock-app
+      middlewares:
+        - userpanel-headers
+        - security-headers
+      tls:
+        certResolver: letsencrypt
+      priority: 10
+    
+    # Master Panel (Port 999)
+    masterpanel:
+      entryPoints:
+        - masterpanel
+      rule: "PathPrefix(`/`)"
+      service: logicdock-app
+      middlewares:
+        - masterpanel-headers
+        - security-headers
+      tls:
+        certResolver: letsencrypt
+      priority: 10
+    
+    # Default HTTPS (Port 443)
+    default-https:
+      entryPoints:
+        - websecure
+      rule: "PathPrefix(`/`)"
+      service: logicdock-app
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt
+      priority: 1
+    
+    # Terminal WebSocket
+    terminal-ws:
+      entryPoints:
+        - userpanel
+        - masterpanel
+        - websecure
+      rule: "PathPrefix(`/ws`)"
+      service: terminal-gateway
+      tls:
+        certResolver: letsencrypt
+      priority: 100
+
+  # Middlewares
+  middlewares:
+    # HTTPS Redirect
+    redirect-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+    
+    # Security Headers
+    security-headers:
+      headers:
+        frameDeny: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+    
+    # User Panel Headers
+    userpanel-headers:
+      headers:
+        customRequestHeaders:
+          X-Panel-Type: "user"
+    
+    # Master Panel Headers
+    masterpanel-headers:
+      headers:
+        customRequestHeaders:
+          X-Panel-Type: "master"
+    
+    # Retry Middleware
+    retry-middleware:
+      retry:
+        attempts: 3
+        initialInterval: 100ms
+    
+    # Error Pages
+    error-pages:
+      errors:
+        status:
+          - "500-599"
+        service: logicdock-app
+        query: "/public/error.php?code={status}"

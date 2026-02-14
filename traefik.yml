@@ -1,0 +1,110 @@
+# Traefik Static Configuration for LogicDock
+# Handles SSL termination on ports 80, 443, 777, 999
+
+api:
+  dashboard: false
+  insecure: false  # Disabled for production security
+
+# Health check endpoint
+ping:
+  entryPoint: traefik
+
+log:
+  level: INFO
+  format: json
+
+# Access logs for debugging
+accessLog:
+  filePath: "/var/log/traefik/access.log"
+  format: json
+  bufferingSize: 100
+  filters:
+    statusCodes:
+      - "400-599"
+    retryAttempts: true
+    minDuration: "100ms"
+
+# Entry Points - Where Traefik listens for connections
+entryPoints:
+  # Traefik internal (for ping/health)
+  traefik:
+    address: ":8082"
+  
+  # HTTP - Used for Let's Encrypt challenge (no redirect for ACME)
+  web:
+    address: ":80"
+  
+  # HTTPS - Standard secure port with HTTP/3 support
+  websecure:
+    address: ":443"
+    http3:
+      advertisedPort: 443
+    http:
+      tls:
+        certResolver: letsencrypt
+    transport:
+      respondingTimeouts:
+        readTimeout: "60s"
+        writeTimeout: "60s"
+        idleTimeout: "180s"
+  
+  # User Panel - Port 777 with HTTP/3 support
+  userpanel:
+    address: ":777"
+    http3:
+      advertisedPort: 777
+    http:
+      tls:
+        certResolver: letsencrypt
+    transport:
+      respondingTimeouts:
+        readTimeout: "60s"
+        writeTimeout: "60s"
+        idleTimeout: "180s"
+  
+  # Master Panel - Port 999 with HTTP/3 support
+  masterpanel:
+    address: ":999"
+    http3:
+      advertisedPort: 999
+    http:
+      tls:
+        certResolver: letsencrypt
+    transport:
+      respondingTimeouts:
+        readTimeout: "60s"
+        writeTimeout: "60s"
+        idleTimeout: "180s"
+
+# Certificate Resolvers - Let's Encrypt configuration
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      # Email for Let's Encrypt notifications
+      email: admin@logicdock.cloud
+      # Storage file for certificates
+      storage: /letsencrypt/acme.json
+      # TLS Challenge - Works for ALL domains (no DNS API needed!)
+      # Automatically generates SSL for each subdomain on first request
+      tlsChallenge: {}
+      # HTTP Challenge - Fallback for port 80
+      httpChallenge:
+        entryPoint: web
+
+# Providers - How Traefik discovers services  
+providers:
+  # File provider with directory watch for all configs
+  # Watches both dynamic.yml and apps/*.yml files
+  file:
+    directory: /etc/traefik
+    watch: true
+
+# Retry configuration for transient failures
+serversTransport:
+  insecureSkipVerify: false
+  maxIdleConnsPerHost: 200
+  forwardingTimeouts:
+    dialTimeout: "30s"
+    responseHeaderTimeout: "30s"
+    idleConnTimeout: "90s"
+

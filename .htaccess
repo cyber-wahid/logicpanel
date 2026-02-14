@@ -1,0 +1,14 @@
+RewriteEngine On
+
+# Block sensitive files and directories
+RewriteRule ^(\.env|\.git|\.dockerignore|Dockerfile|docker-compose\.yml|composer\.(json|lock)|install\.sh|uninstall\.sh|create_admin\.php|index_master\.php)$ - [F,L]
+RewriteRule ^(database|config|src|storage/logs)/ - [F,L]
+
+# API Routes - Direct both /api/ and /public/api/ to public/api.php
+RewriteRule ^api/(.*)$ public/api.php [QSA,L]
+RewriteRule ^public/api/(.*)$ public/api.php [QSA,L]
+
+# Redirect all other requests to index.php if not a real file/directory
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]

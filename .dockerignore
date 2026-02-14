@@ -1,0 +1,12 @@
+vendor/
+node_modules/
+.git/
+.env
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/user-apps/*
+mysql_data/
+.antigravity/
+.gemini/
