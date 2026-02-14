@@ -1,4 +1,4 @@
--- LogicDock Complete Database Schema
+-- LogicPanel Complete Database Schema
 -- MySQL/MariaDB
 -- Version: 3.0 (Unified - All tables, columns, indexes, and seed data)
 -- Last Updated: 2026-02-12
@@ -492,7 +492,7 @@ ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description);
 
 -- Default Settings
 INSERT INTO settings (`key`, `value`, `type`, `group`, description) VALUES
-('app_name', 'LogicDock', 'string', 'general', 'Application name'),
+('app_name', 'LogicPanel', 'string', 'general', 'Application name'),
 ('maintenance_mode', '0', 'boolean', 'general', 'Enable maintenance mode'),
 ('allow_registration', '1', 'boolean', 'users', 'Allow new user registration'),
 ('default_package_id', '1', 'integer', 'users', 'Default package for new users'),

@@ -1,6 +1,6 @@
 <?php
 /**
- * LogicDock Adminer - Standalone Version
+ * LogicPanel Adminer - Standalone Version
  * No session, no token, no authentication wrapper
  * Simply includes the Adminer core
  * 

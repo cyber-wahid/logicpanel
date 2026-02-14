@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 use Slim\App;
 use Slim\Routing\RouteCollectorProxy;
-use LogicDock\Application\Controllers\AuthController;
-use LogicDock\Application\Controllers\ServiceController;
-use LogicDock\Application\Controllers\DatabaseController;
-use LogicDock\Application\Controllers\FileController;
-use LogicDock\Application\Controllers\BackupController;
-use LogicDock\Application\Controllers\SystemController;
-use LogicDock\Application\Controllers\CronController;
-use LogicDock\Application\Middleware\AuthMiddleware;
-use LogicDock\Application\Middleware\RateLimitMiddleware;
-use LogicDock\Application\Middleware\CorsMiddleware;
+use LogicPanel\Application\Controllers\AuthController;
+use LogicPanel\Application\Controllers\ServiceController;
+use LogicPanel\Application\Controllers\DatabaseController;
+use LogicPanel\Application\Controllers\FileController;
+use LogicPanel\Application\Controllers\BackupController;
+use LogicPanel\Application\Controllers\SystemController;
+use LogicPanel\Application\Controllers\CronController;
+use LogicPanel\Application\Middleware\AuthMiddleware;
+use LogicPanel\Application\Middleware\RateLimitMiddleware;
+use LogicPanel\Application\Middleware\CorsMiddleware;
 
 return function (App $app) {
     // CORS Middleware

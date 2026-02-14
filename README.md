@@ -1,9 +1,9 @@
-# LogicDock 🚀
+# LogicPanel 🚀
 
 > **Modern, secure control panel for hosting Node.js and Python applications.**
 > Built with Docker, Traefik, and MariaDB.
 
-[![LogicDock](https://img.shields.io/badge/LogicDock-v1.0.0-blue)](https://github.com/cyber-wahid/panel)
+[![LogicPanel](https://img.shields.io/badge/LogicPanel-v1.0.0-blue)](https://github.com/cyber-wahid/panel)
 [![License](https://img.shields.io/badge/license-GPL--3.0-green)](LICENSE)
 
 ---
@@ -36,7 +36,7 @@ After installation, access your dashboard:
 
 ## 🛠️ Essential Commands
 
-Run these from `/opt/logicdock`:
+Run these from `/opt/logicpanel`:
 
 | Action | Command |
 |:---|:---|
@@ -56,7 +56,7 @@ Run these from `/opt/logicdock`:
 - **Admin Creation Failed?** Run:
 
   ```bash
-  docker exec -it logicdock_app php /var/www/html/create_admin.php --user="admin" --email="admin@example.com" --pass="password"
+  docker exec -it logicpanel_app php /var/www/html/create_admin.php --user="admin" --email="admin@example.com" --pass="password"
   ```
 
 ---

@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 use Slim\App;
 use Slim\Routing\RouteCollectorProxy;
-use LogicDock\Application\Middleware\AuthMiddleware;
-use LogicDock\Application\Middleware\CorsMiddleware;
-use LogicDock\Application\Controllers\Master\AccountController;
-use LogicDock\Application\Controllers\Master\PackageController;
-use LogicDock\Application\Controllers\Master\SettingsController;
-use LogicDock\Application\Controllers\AuthController;
-use LogicDock\Application\Middleware\RateLimitMiddleware;
+use LogicPanel\Application\Middleware\AuthMiddleware;
+use LogicPanel\Application\Middleware\CorsMiddleware;
+use LogicPanel\Application\Controllers\Master\AccountController;
+use LogicPanel\Application\Controllers\Master\PackageController;
+use LogicPanel\Application\Controllers\Master\SettingsController;
+use LogicPanel\Application\Controllers\AuthController;
+use LogicPanel\Application\Middleware\RateLimitMiddleware;
 
 return function (App $app) {
     // CORS Middleware
@@ -69,7 +69,7 @@ return function (App $app) {
         $group->delete('/packages/{id}', [PackageController::class, 'delete']);
 
         // System Stats
-        $group->get('/system/stats', [\LogicDock\Application\Controllers\SystemController::class, 'stats']);
+        $group->get('/system/stats', [\LogicPanel\Application\Controllers\SystemController::class, 'stats']);
 
         // Settings
         $group->get('/settings', [SettingsController::class, 'get']);
@@ -78,43 +78,43 @@ return function (App $app) {
         $group->post('/settings', [SettingsController::class, 'update']);
 
         // Database Admin
-        $group->get('/databases', [\LogicDock\Application\Controllers\Master\DatabaseController::class, 'index']);
-        $group->delete('/databases/{id}', [\LogicDock\Application\Controllers\Master\DatabaseController::class, 'delete']);
+        $group->get('/databases', [\LogicPanel\Application\Controllers\Master\DatabaseController::class, 'index']);
+        $group->delete('/databases/{id}', [\LogicPanel\Application\Controllers\Master\DatabaseController::class, 'delete']);
 
         // Service/Container Admin (User Containers)
-        $group->get('/services', [\LogicDock\Application\Controllers\Master\ServiceController::class, 'index']);
-        $group->post('/services/bulk-action', [\LogicDock\Application\Controllers\Master\ServiceController::class, 'bulkAction']);
-        $group->post('/services/{id}/start', [\LogicDock\Application\Controllers\Master\ServiceController::class, 'start']);
-        $group->post('/services/{id}/stop', [\LogicDock\Application\Controllers\Master\ServiceController::class, 'stop']);
-        $group->post('/services/{id}/restart', [\LogicDock\Application\Controllers\Master\ServiceController::class, 'restart']);
-        $group->delete('/services/{id}', [\LogicDock\Application\Controllers\Master\ServiceController::class, 'delete']);
+        $group->get('/services', [\LogicPanel\Application\Controllers\Master\ServiceController::class, 'index']);
+        $group->post('/services/bulk-action', [\LogicPanel\Application\Controllers\Master\ServiceController::class, 'bulkAction']);
+        $group->post('/services/{id}/start', [\LogicPanel\Application\Controllers\Master\ServiceController::class, 'start']);
+        $group->post('/services/{id}/stop', [\LogicPanel\Application\Controllers\Master\ServiceController::class, 'stop']);
+        $group->post('/services/{id}/restart', [\LogicPanel\Application\Controllers\Master\ServiceController::class, 'restart']);
+        $group->delete('/services/{id}', [\LogicPanel\Application\Controllers\Master\ServiceController::class, 'delete']);
 
         // System Services (Root Admin)
-        $group->get('/system/services', [\LogicDock\Application\Controllers\Master\SystemController::class, 'getServicesStatus']);
-        $group->post('/system/services/restart', [\LogicDock\Application\Controllers\Master\SystemController::class, 'restartService']);
+        $group->get('/system/services', [\LogicPanel\Application\Controllers\Master\SystemController::class, 'getServicesStatus']);
+        $group->post('/system/services/restart', [\LogicPanel\Application\Controllers\Master\SystemController::class, 'restartService']);
 
         // Updates
-        $group->get('/system/update/check', [\LogicDock\Application\Controllers\SystemController::class, 'checkUpdate']);
-        $group->post('/system/update/perform', [\LogicDock\Application\Controllers\SystemController::class, 'performUpdate']);
-        $group->get('/system/update/progress', [\LogicDock\Application\Controllers\SystemController::class, 'getUpdateProgress']);
+        $group->get('/system/update/check', [\LogicPanel\Application\Controllers\SystemController::class, 'checkUpdate']);
+        $group->post('/system/update/perform', [\LogicPanel\Application\Controllers\SystemController::class, 'performUpdate']);
+        $group->get('/system/update/progress', [\LogicPanel\Application\Controllers\SystemController::class, 'getUpdateProgress']);
 
         // Domain Admin
-        $group->get('/domains', [\LogicDock\Application\Controllers\Master\DomainController::class, 'index']);
-        $group->post('/domains', [\LogicDock\Application\Controllers\Master\DomainController::class, 'create']);
-        $group->delete('/domains/{id}', [\LogicDock\Application\Controllers\Master\DomainController::class, 'delete']);
+        $group->get('/domains', [\LogicPanel\Application\Controllers\Master\DomainController::class, 'index']);
+        $group->post('/domains', [\LogicPanel\Application\Controllers\Master\DomainController::class, 'create']);
+        $group->delete('/domains/{id}', [\LogicPanel\Application\Controllers\Master\DomainController::class, 'delete']);
 
         // API Keys
-        $group->get('/api-keys', [\LogicDock\Application\Controllers\Master\ApiKeyController::class, 'index']);
-        $group->post('/api-keys', [\LogicDock\Application\Controllers\Master\ApiKeyController::class, 'create']);
-        $group->delete('/api-keys/{id}', [\LogicDock\Application\Controllers\Master\ApiKeyController::class, 'delete']);
+        $group->get('/api-keys', [\LogicPanel\Application\Controllers\Master\ApiKeyController::class, 'index']);
+        $group->post('/api-keys', [\LogicPanel\Application\Controllers\Master\ApiKeyController::class, 'create']);
+        $group->delete('/api-keys/{id}', [\LogicPanel\Application\Controllers\Master\ApiKeyController::class, 'delete']);
 
         // Reseller Stats
-        $group->get('/reseller/stats', [\LogicDock\Application\Controllers\Master\ResellerController::class, 'resourceStats']);
+        $group->get('/reseller/stats', [\LogicPanel\Application\Controllers\Master\ResellerController::class, 'resourceStats']);
         
         // Reseller Management
-        $group->delete('/resellers/{id}', [\LogicDock\Application\Controllers\Master\ResellerController::class, 'delete']);
+        $group->delete('/resellers/{id}', [\LogicPanel\Application\Controllers\Master\ResellerController::class, 'delete']);
 
-    })->add(\LogicDock\Application\Middleware\MasterAuthMiddleware::class)
+    })->add(\LogicPanel\Application\Middleware\MasterAuthMiddleware::class)
         ->add(AuthMiddleware::class)
         ->add(RateLimitMiddleware::class);
 };

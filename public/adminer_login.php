@@ -1,6 +1,6 @@
 <?php
 /**
- * LogicDock Adminer Auto-Login Helper - Sessionless
+ * LogicPanel Adminer Auto-Login Helper - Sessionless
  */
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -33,7 +33,7 @@ if (!$is_authenticated) {
     if (isset($_SESSION['lp_session_token']) && is_string($_SESSION['lp_session_token'])) {
         $is_authenticated = true;
         $authToken = JWT::encode([
-            'iss' => 'logicdock',
+            'iss' => 'logicpanel',
             'iat' => time(),
             'exp' => time() + 3600,
             'purpose' => 'adminer_access'
@@ -44,7 +44,7 @@ if (!$is_authenticated) {
 
 if (!$is_authenticated) {
     http_response_code(403);
-    die('Access Denied. Please login to LogicDock first.');
+    die('Access Denied. Please login to LogicPanel first.');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

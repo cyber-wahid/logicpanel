@@ -1,4 +1,4 @@
-# LogicDock - Quick Start Guide
+# LogicPanel - Quick Start Guide
 
 ## ⚡ Installation (2 minutes)
 
@@ -10,7 +10,7 @@
 
 ### Install Command
 ```bash
-curl -sSL https://raw.githubusercontent.com/LogicDock/logicdock/main/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/LogicPanel/logicpanel/main/install.sh | sudo bash
 ```
 
 ### What You'll Be Asked:
@@ -41,7 +41,7 @@ curl -sSL https://raw.githubusercontent.com/LogicDock/logicdock/main/install.sh 
 
 ### Verify SSL
 ```bash
-cd /opt/logicdock
+cd /opt/logicpanel
 ./check-ssl.sh
 ```
 
@@ -129,7 +129,7 @@ https://your-domain.com:777
 # From panel: Click app → "Logs" tab
 
 # From terminal:
-docker logs logicdock_app_service_<id>
+docker logs logicpanel_app_service_<id>
 ```
 
 ### Restart Application
@@ -137,7 +137,7 @@ docker logs logicdock_app_service_<id>
 # From panel: Click app → "Restart" button
 
 # From terminal:
-docker restart logicdock_app_service_<id>
+docker restart logicpanel_app_service_<id>
 ```
 
 ### Update Panel
@@ -145,18 +145,18 @@ docker restart logicdock_app_service_<id>
 # From panel: Settings → Updater → Check for Updates
 
 # From terminal:
-cd /opt/logicdock
+cd /opt/logicpanel
 ./update.sh
 ```
 
 ### Backup Data
 ```bash
 # Backup entire installation
-sudo tar -czf logicdock-backup-$(date +%Y%m%d).tar.gz /opt/logicdock
+sudo tar -czf logicpanel-backup-$(date +%Y%m%d).tar.gz /opt/logicpanel
 
 # Backup databases only
-cd /opt/logicdock
-docker compose exec logicdock-db mysqldump -u root -p --all-databases > backup.sql
+cd /opt/logicpanel
+docker compose exec logicpanel-db mysqldump -u root -p --all-databases > backup.sql
 ```
 
 ---
@@ -165,7 +165,7 @@ docker compose exec logicdock-db mysqldump -u root -p --all-databases > backup.s
 
 ### Complete Removal
 ```bash
-curl -sSL https://raw.githubusercontent.com/LogicDock/logicdock/main/uninstall.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/LogicPanel/logicpanel/main/uninstall.sh | sudo bash
 ```
 
 ### What Gets Deleted:
@@ -182,7 +182,7 @@ curl -sSL https://raw.githubusercontent.com/LogicDock/logicdock/main/uninstall.s
 ### SSL Not Working
 ```bash
 # Check Traefik logs
-cd /opt/logicdock
+cd /opt/logicpanel
 docker compose logs -f traefik
 
 # Common issues:
@@ -202,8 +202,8 @@ sudo ss -tulpn | grep :999
 # Stop the service
 sudo systemctl stop <service-name>
 
-# Restart LogicDock
-cd /opt/logicdock
+# Restart LogicPanel
+cd /opt/logicpanel
 docker compose restart
 ```
 
@@ -226,7 +226,7 @@ docker compose up -d --build
 ### Application Won't Deploy
 ```bash
 # Check application logs
-docker logs logicdock_app_service_<id>
+docker logs logicpanel_app_service_<id>
 
 # Common issues:
 # 1. Wrong port in application
@@ -241,12 +241,12 @@ docker logs logicdock_app_service_<id>
 ## 📞 Get Help
 
 ### Documentation
-- GitHub: https://github.com/LogicDock/logicdock
-- Issues: https://github.com/LogicDock/logicdock/issues
+- GitHub: https://github.com/LogicPanel/logicpanel
+- Issues: https://github.com/LogicPanel/logicpanel/issues
 
 ### Support
-- Email: support@logicdock.cloud
-- Website: https://logicdock.cloud
+- Email: support@logicpanel.cloud
+- Website: https://logicpanel.cloud
 
 ---
 

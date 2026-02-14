@@ -5,16 +5,16 @@ declare(strict_types=1);
 use DI\Container;
 use Slim\Factory\AppFactory;
 use Dotenv\Dotenv;
-use LogicDock\Infrastructure\Database\Connection;
-use LogicDock\Application\Services\JwtService;
-use LogicDock\Infrastructure\Docker\DockerService;
-use LogicDock\Infrastructure\Database\DatabaseProvisionerService;
-use LogicDock\Application\Middleware\AuthMiddleware;
-use LogicDock\Application\Middleware\CorsMiddleware;
-use LogicDock\Application\Controllers\AuthController;
-use LogicDock\Application\Controllers\ServiceController;
-use LogicDock\Application\Controllers\DatabaseController;
-use LogicDock\Application\Controllers\FileController;
+use LogicPanel\Infrastructure\Database\Connection;
+use LogicPanel\Application\Services\JwtService;
+use LogicPanel\Infrastructure\Docker\DockerService;
+use LogicPanel\Infrastructure\Database\DatabaseProvisionerService;
+use LogicPanel\Application\Middleware\AuthMiddleware;
+use LogicPanel\Application\Middleware\CorsMiddleware;
+use LogicPanel\Application\Controllers\AuthController;
+use LogicPanel\Application\Controllers\ServiceController;
+use LogicPanel\Application\Controllers\DatabaseController;
+use LogicPanel\Application\Controllers\FileController;
 
 // Enable error display temporarily for debugging
 ini_set('display_errors', '1');
@@ -85,9 +85,9 @@ $container->set('settings', $settings);
 
 // Register logging service first
 // Register logging service first
-$container->set(\LogicDock\Application\Services\LoggingService::class, function () use ($settings) {
+$container->set(\LogicPanel\Application\Services\LoggingService::class, function () use ($settings) {
     $config = $settings['logging'] ?? [];
-    $channel = $config['channel'] ?? 'LogicDock';
+    $channel = $config['channel'] ?? 'LogicPanel';
     // If channel is 'stderr' or 'stdout', map to php:// streams. 
     // But here we want the path. install.sh sets LOG_CHANNEL=stderr
 
@@ -100,20 +100,20 @@ $container->set(\LogicDock\Application\Services\LoggingService::class, function 
 
     $level = $config['level'] ?? 'debug';
 
-    return new \LogicDock\Application\Services\LoggingService($channel, $path, $level);
+    return new \LogicPanel\Application\Services\LoggingService($channel, $path, $level);
 });
 
 // Register services
-$container->set(\LogicDock\Application\Services\TokenBlacklistService::class, function ($container) {
-    return new \LogicDock\Application\Services\TokenBlacklistService(
-        $container->get(\LogicDock\Application\Services\LoggingService::class)
+$container->set(\LogicPanel\Application\Services\TokenBlacklistService::class, function ($container) {
+    return new \LogicPanel\Application\Services\TokenBlacklistService(
+        $container->get(\LogicPanel\Application\Services\LoggingService::class)
     );
 });
 
 $container->set(JwtService::class, function ($container) use ($settings) {
     return new JwtService(
         $settings['jwt'],
-        $container->get(\LogicDock\Application\Services\LoggingService::class)
+        $container->get(\LogicPanel\Application\Services\LoggingService::class)
     );
 });
 
@@ -129,8 +129,8 @@ $container->set(DatabaseProvisionerService::class, function () use ($settings) {
 $container->set(AuthMiddleware::class, function ($container) {
     return new AuthMiddleware(
         $container->get(JwtService::class),
-        $container->get(\LogicDock\Application\Services\TokenBlacklistService::class),
-        $container->get(\LogicDock\Application\Services\LoggingService::class)
+        $container->get(\LogicPanel\Application\Services\TokenBlacklistService::class),
+        $container->get(\LogicPanel\Application\Services\LoggingService::class)
     );
 });
 
@@ -142,7 +142,7 @@ $container->set(CorsMiddleware::class, function () {
 $container->set(AuthController::class, function ($container) {
     return new AuthController(
         $container->get(JwtService::class),
-        $container->get(\LogicDock\Application\Services\TokenBlacklistService::class)
+        $container->get(\LogicPanel\Application\Services\TokenBlacklistService::class)
     );
 });
 
@@ -161,42 +161,42 @@ $container->set(FileController::class, function () use ($settings) {
 });
 
 // Master Panel Services
-$container->set(\LogicDock\Application\Services\SystemBridgeService::class, function () {
-    return new \LogicDock\Application\Services\SystemBridgeService();
+$container->set(\LogicPanel\Application\Services\SystemBridgeService::class, function () {
+    return new \LogicPanel\Application\Services\SystemBridgeService();
 });
 
 // Master Panel Controllers
-$container->set(\LogicDock\Application\Controllers\Master\AccountController::class, function ($container) {
-    return new \LogicDock\Application\Controllers\Master\AccountController(
-        $container->get(\LogicDock\Application\Services\SystemBridgeService::class),
+$container->set(\LogicPanel\Application\Controllers\Master\AccountController::class, function ($container) {
+    return new \LogicPanel\Application\Controllers\Master\AccountController(
+        $container->get(\LogicPanel\Application\Services\SystemBridgeService::class),
         $container->get(DockerService::class),
         $container->get(JwtService::class)
     );
 });
 
-$container->set(\LogicDock\Application\Controllers\Master\ServiceController::class, function ($container) {
-    return new \LogicDock\Application\Controllers\Master\ServiceController(
-        $container->get(\LogicDock\Application\Services\SystemBridgeService::class),
+$container->set(\LogicPanel\Application\Controllers\Master\ServiceController::class, function ($container) {
+    return new \LogicPanel\Application\Controllers\Master\ServiceController(
+        $container->get(\LogicPanel\Application\Services\SystemBridgeService::class),
         $container->get(DockerService::class)
     );
 });
 
-$container->set(\LogicDock\Application\Controllers\Master\SystemController::class, function ($container) {
-    return new \LogicDock\Application\Controllers\Master\SystemController(
-        $container->get(\LogicDock\Application\Services\SystemBridgeService::class)
+$container->set(\LogicPanel\Application\Controllers\Master\SystemController::class, function ($container) {
+    return new \LogicPanel\Application\Controllers\Master\SystemController(
+        $container->get(\LogicPanel\Application\Services\SystemBridgeService::class)
     );
 });
 
-$container->set(\LogicDock\Application\Controllers\Master\DomainController::class, function () {
-    return new \LogicDock\Application\Controllers\Master\DomainController();
+$container->set(\LogicPanel\Application\Controllers\Master\DomainController::class, function () {
+    return new \LogicPanel\Application\Controllers\Master\DomainController();
 });
 
-$container->set(LogicDock\Application\Controllers\CronController::class, function ($container) {
-    return new LogicDock\Application\Controllers\CronController($container->get(DockerService::class));
+$container->set(LogicPanel\Application\Controllers\CronController::class, function ($container) {
+    return new LogicPanel\Application\Controllers\CronController($container->get(DockerService::class));
 });
 
-$container->set(LogicDock\Application\Controllers\SystemController::class, function ($container) {
-    return new LogicDock\Application\Controllers\SystemController($container->get(DockerService::class));
+$container->set(LogicPanel\Application\Controllers\SystemController::class, function ($container) {
+    return new LogicPanel\Application\Controllers\SystemController($container->get(DockerService::class));
 });
 
 // Set container to create App with on AppFactory
@@ -241,7 +241,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
 $effectivePort = $hostPort ?: ($fwPort ?: $serverPort);
 
 try {
-    // LogicDock Dual-Port Routing
+    // LogicPanel Dual-Port Routing
     $masterPort = (int) ($_ENV['MASTER_PORT'] ?? 967);
     if ((int) $effectivePort === $masterPort || getenv('APP_MODE') === 'master') {
         // Master Panel Routes

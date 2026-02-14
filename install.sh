@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 
-# LogicDock - One-Line Installer v3.0 (Traefik Edition)
+# LogicPanel - One-Line Installer v3.0 (Traefik Edition)
 # Author: cyber-wahid
-# Description: Automated installer for LogicDock with Docker and Traefik SSL.
+# Description: Automated installer for LogicPanel with Docker and Traefik SSL.
 # Supports: Debian/Ubuntu (apt), RHEL/CentOS/Fedora (dnf/yum), Arch (pacman)
 # License: Proprietary
 
 set -e
 
 # --- Configuration ---
-INSTALL_DIR="/opt/logicdock"
+INSTALL_DIR="/opt/logicpanel"
 VERSION="3.0.0"
 
 # Colors
@@ -43,7 +43,7 @@ echo "██║     ██║   ██║██║   ██║██║██║
 echo "███████╗╚██████╔╝╚██████╔╝██║╚██████╗██║     ██║  ██║██║ ╚████║███████╗███████╗"
 echo "╚══════╝ ╚═════╝  ╚═════╝ ╚═╝ ╚═════╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝"
 echo -e "${NC}"
-echo -e "--- ${YELLOW}LogicDock Automated Installation v${VERSION} (Traefik Edition)${NC} ---\n"
+echo -e "--- ${YELLOW}LogicPanel Automated Installation v${VERSION} (Traefik Edition)${NC} ---\n"
 
 # --- 2. System Preparation ---
 log_info "Step 1: System Checks..."
@@ -53,10 +53,10 @@ check_screen() {
     if [ -z "$STY" ] && [ -z "$TMUX" ]; then
         log_warn "You are NOT running inside a 'screen' or 'tmux' session."
         log_warn "If your connection drops, the installation will fail."
-        log_warn "It is HIGHLY RECOMMENDED to run: screen -S logicdock"
+        log_warn "It is HIGHLY RECOMMENDED to run: screen -S logicpanel"
         read -p "--- Continue anyway? (y/n): " CONTINUE_SCREEN < /dev/tty
         if [[ ! "$CONTINUE_SCREEN" =~ ^[Yy]$ ]]; then
-            log_error "Installation cancelled. Please run 'screen -S logicdock' first."
+            log_error "Installation cancelled. Please run 'screen -S logicpanel' first."
             exit 1
         fi
     else
@@ -173,9 +173,9 @@ if command -v ufw &> /dev/null && ufw status | grep -q "Status: active"; then
     ufw allow 80/tcp comment "HTTP - Let's Encrypt" > /dev/null 2>&1
     ufw allow 443/tcp comment "HTTPS" > /dev/null 2>&1
     ufw allow 443/udp comment "HTTP/3 (QUIC)" > /dev/null 2>&1
-    ufw allow 777/tcp comment "LogicDock User Panel" > /dev/null 2>&1
+    ufw allow 777/tcp comment "LogicPanel User Panel" > /dev/null 2>&1
     ufw allow 777/udp comment "HTTP/3 User Panel" > /dev/null 2>&1
-    ufw allow 999/tcp comment "LogicDock Master Panel" > /dev/null 2>&1
+    ufw allow 999/tcp comment "LogicPanel Master Panel" > /dev/null 2>&1
     ufw allow 999/udp comment "HTTP/3 Master Panel" > /dev/null 2>&1
     log_success "UFW rules configured with HTTP/3 support."
 elif command -v firewall-cmd &> /dev/null && systemctl is-active --quiet firewalld; then
@@ -191,18 +191,18 @@ elif command -v firewall-cmd &> /dev/null && systemctl is-active --quiet firewal
     log_success "Firewalld rules configured with HTTP/3 support."
 elif command -v nft &> /dev/null && systemctl is-active --quiet nftables 2>/dev/null; then
     log_info "Detected nftables. Configuring..."
-    # Add LogicDock table if not exists
-    nft add table inet logicdock 2>/dev/null || true
-    nft add chain inet logicdock input '{ type filter hook input priority 0; policy accept; }' 2>/dev/null || true
+    # Add LogicPanel table if not exists
+    nft add table inet logicpanel 2>/dev/null || true
+    nft add chain inet logicpanel input '{ type filter hook input priority 0; policy accept; }' 2>/dev/null || true
     for port in 80 443 777 999; do
-        nft add rule inet logicdock input tcp dport $port accept 2>/dev/null || true
+        nft add rule inet logicpanel input tcp dport $port accept 2>/dev/null || true
     done
     for port in 443 777 999; do
-        nft add rule inet logicdock input udp dport $port accept 2>/dev/null || true
+        nft add rule inet logicpanel input udp dport $port accept 2>/dev/null || true
     done
     # Persist rules
     if [ -d /etc/nftables.d ]; then
-        nft list table inet logicdock > /etc/nftables.d/logicdock.conf 2>/dev/null || true
+        nft list table inet logicpanel > /etc/nftables.d/logicpanel.conf 2>/dev/null || true
     fi
     log_success "nftables rules configured with HTTP/3 support."
 elif command -v iptables &> /dev/null; then
@@ -519,7 +519,7 @@ fi
 
 # --- 3. Create Docker Network ---
 log_info "Step 2: Configuring Docker Network..."
-docker network inspect logicdock_internal &>/dev/null || docker network create logicdock_internal
+docker network inspect logicpanel_internal &>/dev/null || docker network create logicpanel_internal
 log_success "Docker network configured."
 
 # --- 4. User Input ---
@@ -607,8 +607,8 @@ DB_PROVISIONER_SECRET=$(generate_random 64)
 echo ""
 echo "--- container Configuration (Press Enter for Defaults) ---"
 
-read -p "--- Enter Main DB Container Name (default: logicdock_db): " DB_HOST_MAIN < /dev/tty
-DB_HOST_MAIN=${DB_HOST_MAIN:-logicdock_db}
+read -p "--- Enter Main DB Container Name (default: logicpanel_db): " DB_HOST_MAIN < /dev/tty
+DB_HOST_MAIN=${DB_HOST_MAIN:-logicpanel_db}
 
 read -p "--- Enter Shared MySQL Container Name (default: lp_mysql_mother): " DB_HOST_MYSQL < /dev/tty
 DB_HOST_MYSQL=${DB_HOST_MYSQL:-lp_mysql_mother}
@@ -645,7 +645,7 @@ fi
 
 log_success "Containers configured."
 
-log_info "Step 4: Deploying LogicDock Services..."
+log_info "Step 4: Deploying LogicPanel Services..."
 mkdir -p $INSTALL_DIR
 cd $INSTALL_DIR
 
@@ -659,7 +659,7 @@ log_info "Creating SSL management scripts..."
 # Create check-ssl.sh
 cat > check-ssl.sh << 'EOFSSL'
 #!/bin/bash
-# Quick SSL Status Check for LogicDock
+# Quick SSL Status Check for LogicPanel
 
 # Colors
 RED='\033[0;31m'
@@ -668,7 +668,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${BLUE}🔍 LogicDock SSL Status Check${NC}"
+echo -e "${BLUE}🔍 LogicPanel SSL Status Check${NC}"
 echo "================================"
 echo ""
 
@@ -701,16 +701,16 @@ echo ""
 
 # Check 2: Docker Services
 echo -e "${YELLOW}2. Docker Services${NC}"
-if docker ps | grep -q "logicdock_traefik"; then
+if docker ps | grep -q "logicpanel_traefik"; then
     echo -e "${GREEN}✅ Traefik is running${NC}"
 else
     echo -e "${RED}❌ Traefik is not running${NC}"
 fi
 
-if docker ps | grep -q "logicdock_app"; then
-    echo -e "${GREEN}✅ LogicDock app is running${NC}"
+if docker ps | grep -q "logicpanel_app"; then
+    echo -e "${GREEN}✅ LogicPanel app is running${NC}"
 else
-    echo -e "${RED}❌ LogicDock app is not running${NC}"
+    echo -e "${RED}❌ LogicPanel app is not running${NC}"
 fi
 echo ""
 
@@ -756,7 +756,7 @@ echo -e "${BLUE}================================${NC}"
 echo "🌐 Test URLs:"
 echo "   User Panel:   https://$DOMAIN:$USER_PORT"
 echo "   Master Panel: https://$DOMAIN:$MASTER_PORT"
-if docker ps | grep -q "logicdock_adminer"; then
+if docker ps | grep -q "logicpanel_adminer"; then
     echo "   Database Manager: https://db.$DOMAIN"
 fi
 echo ""
@@ -772,7 +772,7 @@ log_success "SSL check script created."
 # Create setup-ssl.sh for manual SSL reconfiguration
 cat > setup-ssl.sh <<'EOFSETUPSSL'
 #!/bin/bash
-# LogicDock SSL Setup/Reconfiguration Script
+# LogicPanel SSL Setup/Reconfiguration Script
 # Use this if you need to change domain or reconfigure SSL
 
 set -e
@@ -784,7 +784,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo -e "${BLUE}===================================${NC}"
-echo -e "${BLUE}LogicDock SSL Setup${NC}"
+echo -e "${BLUE}LogicPanel SSL Setup${NC}"
 echo -e "${BLUE}===================================${NC}"
 echo ""
 
@@ -899,7 +899,7 @@ log_success "SSL setup script created."
 log_info "Configuring environment..."
 
 cat > .env << EOF
-# LogicDock Environment Configuration
+# LogicPanel Environment Configuration
 # Generated by install.sh on $(date)
 
 APP_ENV=production
@@ -917,7 +917,7 @@ JWT_SECRET=${JWT_SECRET}
 ENCRYPTION_KEY=${ENC_KEY}
 DB_PROVISIONER_SECRET=${DB_PROVISIONER_SECRET}
 
-# Database Credentials (LogicDock's own database)
+# Database Credentials (LogicPanel's own database)
 DB_CONNECTION=mysql
 DB_HOST=${DB_HOST_MAIN}
 DB_PORT=3306
@@ -935,7 +935,7 @@ POSTGRES_ROOT_PASSWORD=${ROOT_PASS}
 MONGO_ROOT_PASSWORD=${ROOT_PASS}
 
 # Docker Configuration
-DOCKER_NETWORK=logicdock_internal
+DOCKER_NETWORK=logicpanel_internal
 USER_APPS_HOST_PATH=${INSTALL_DIR}/storage/user-apps
 
 # Internal Hostnames (Randomized)
@@ -966,7 +966,7 @@ cat > config/settings.json << EOF
     "hostname": "${PANEL_DOMAIN}",
     "master_port": "999",
     "user_port": "777",
-    "company_name": "LogicDock",
+    "company_name": "LogicPanel",
     "contact_email": "${ADMIN_EMAIL}",
     "enable_ssl": "1",
     "letsencrypt_email": "${ADMIN_EMAIL}",
@@ -977,10 +977,10 @@ EOF
 
 # Build and start containers
 echo ""
-log_info "Building LogicDock (this may take 3-5 minutes)..."
-echo -e "  ${YELLOW}Build logs saved to: /tmp/logicdock_build.log${NC}"
-docker compose build --no-cache > /tmp/logicdock_build.log 2>&1 &
-spinner $! "Compiling LogicDock Application..."
+log_info "Building LogicPanel (this may take 3-5 minutes)..."
+echo -e "  ${YELLOW}Build logs saved to: /tmp/logicpanel_build.log${NC}"
+docker compose build --no-cache > /tmp/logicpanel_build.log 2>&1 &
+spinner $! "Compiling LogicPanel Application..."
 
 log_info "Starting Services..."
 docker compose up -d > /dev/null 2>&1 &
@@ -996,15 +996,15 @@ log_info "Verifying container status..."
 
 # Check for containers using patterns (since some have randomized names)
 CONTAINER_PATTERNS=(
-    "logicdock_app:LogicDock Application"
-    "${DB_HOST_MAIN}:LogicDock Database"
-    "logicdock_gateway:Terminal Gateway"
-    "logicdock_traefik:Traefik Proxy"
+    "logicpanel_app:LogicPanel Application"
+    "${DB_HOST_MAIN}:LogicPanel Database"
+    "logicpanel_gateway:Terminal Gateway"
+    "logicpanel_traefik:Traefik Proxy"
     "${DB_HOST_MYSQL}:MySQL Database"
     "${DB_HOST_PG}:PostgreSQL Database"
     "${DB_HOST_MONGO}:MongoDB Database"
-    "logicdock_redis:Redis Cache"
-    "logicdock_db_provisioner:DB Provisioner"
+    "logicpanel_redis:Redis Cache"
+    "logicpanel_db_provisioner:DB Provisioner"
 )
 
 ALL_RUNNING=true
@@ -1034,9 +1034,9 @@ fi
 # Create admin user
 log_info "Downloading admin setup script..."
 if curl -sSL "https://raw.githubusercontent.com/cyber-wahid/panel/main/create_admin.php" -o create_admin.php; then
-    docker exec logicdock_app mkdir -p /var/www/html/database 2>/dev/null || true
-    docker cp create_admin.php logicdock_app:/var/www/html/create_admin.php
-    docker cp config/settings.json logicdock_app:/var/www/html/config/settings.json 2>/dev/null || true
+    docker exec logicpanel_app mkdir -p /var/www/html/database 2>/dev/null || true
+    docker cp create_admin.php logicpanel_app:/var/www/html/create_admin.php
+    docker cp config/settings.json logicpanel_app:/var/www/html/config/settings.json 2>/dev/null || true
     rm -f create_admin.php
 
     # Wait for Database to be ready
@@ -1046,7 +1046,7 @@ if curl -sSL "https://raw.githubusercontent.com/cyber-wahid/panel/main/create_ad
     DB_READY=false
     
     while [ $COUNT -lt $MAX_RETRIES ]; do
-        if docker exec logicdock_app php -r "try { new PDO('mysql:host=logicdock-db;dbname='.getenv('DB_DATABASE'), getenv('DB_USERNAME'), getenv('DB_PASSWORD')); echo 'connected'; } catch(Exception \$e) { exit(1); }" >/dev/null 2>&1; then
+        if docker exec logicpanel_app php -r "try { new PDO('mysql:host=logicpanel-db;dbname='.getenv('DB_DATABASE'), getenv('DB_USERNAME'), getenv('DB_PASSWORD')); echo 'connected'; } catch(Exception \$e) { exit(1); }" >/dev/null 2>&1; then
             DB_READY=true
             break
         fi
@@ -1065,8 +1065,8 @@ if curl -sSL "https://raw.githubusercontent.com/cyber-wahid/panel/main/create_ad
         log_info "Creating administrator account..."
         
         # Verify file exists inside container
-        if docker exec logicdock_app test -f /var/www/html/create_admin.php; then
-            if docker exec logicdock_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}"; then
+        if docker exec logicpanel_app test -f /var/www/html/create_admin.php; then
+            if docker exec logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}"; then
                 log_success "Administrator account created successfully!"
             else
                 log_warn "Admin creation had issues. You may need to run it manually later."
@@ -1074,8 +1074,8 @@ if curl -sSL "https://raw.githubusercontent.com/cyber-wahid/panel/main/create_ad
         else
             log_warn "create_admin.php not found in container. Re-copying..."
             # Try to download directly into container as fallback
-            docker exec logicdock_app curl -sSL "https://raw.githubusercontent.com/cyber-wahid/panel/main/create_admin.php" -o /var/www/html/create_admin.php
-            if docker exec logicdock_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}"; then
+            docker exec logicpanel_app curl -sSL "https://raw.githubusercontent.com/cyber-wahid/panel/main/create_admin.php" -o /var/www/html/create_admin.php
+            if docker exec logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}"; then
                  log_success "Administrator account created successfully (via fallback)!"
             else
                  log_warn "Admin creation failed even after fallback."
@@ -1085,7 +1085,7 @@ if curl -sSL "https://raw.githubusercontent.com/cyber-wahid/panel/main/create_ad
         log_error "Database failed to initialize within expected time."
     fi
 
-    docker exec logicdock_app rm -f /var/www/html/create_admin.php 2>/dev/null || true
+    docker exec logicpanel_app rm -f /var/www/html/create_admin.php 2>/dev/null || true
 else
     log_warn "Could not download admin script. Please create admin manually after installation."
 fi
@@ -1105,7 +1105,7 @@ log_info "Waiting for Traefik to initialize..."
 sleep 10
 
 # Check if Traefik is running
-if docker ps | grep -q "logicdock_traefik"; then
+if docker ps | grep -q "logicpanel_traefik"; then
     log_success "Traefik is running."
     
     # Wait for SSL certificate generation
@@ -1188,7 +1188,7 @@ log_info "Running post-installation verification..."
 
 # Test 1: Check if all containers are healthy
 log_info "Checking container health..."
-UNHEALTHY_CONTAINERS=$(docker ps --filter "health=unhealthy" --format "{{.Names}}" | grep logicdock || true)
+UNHEALTHY_CONTAINERS=$(docker ps --filter "health=unhealthy" --format "{{.Names}}" | grep logicpanel || true)
 if [ -z "$UNHEALTHY_CONTAINERS" ]; then
     log_success "All containers are healthy."
 else
@@ -1223,7 +1223,7 @@ fi
 cat > INSTALLATION_SUMMARY.txt << EOFSUMMARY
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                                                                              ║
-║                    LogicDock Installation Summary                           ║
+║                    LogicPanel Installation Summary                           ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
@@ -1276,7 +1276,7 @@ Update Panel:
 
 📦 INSTALLED SERVICES
 
-✓ LogicDock Application
+✓ LogicPanel Application
 ✓ Traefik Reverse Proxy (with Let's Encrypt SSL)
 ✓ Terminal Gateway (WebSocket)
 ✓ MariaDB (MySQL) - Port 3306
@@ -1314,13 +1314,13 @@ If SSL is not working immediately:
 
 📚 DOCUMENTATION & SUPPORT
 
-Documentation: https://docs.logicdock.cloud
+Documentation: https://docs.logicpanel.cloud
 GitHub Issues:  https://github.com/cyber-wahid/panel/issues
-Community:      https://community.logicdock.cloud
+Community:      https://community.logicpanel.cloud
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Thank you for choosing LogicDock! 🚀
+Thank you for choosing LogicPanel! 🚀
 
 EOFSUMMARY
 
@@ -1359,7 +1359,7 @@ echo -e "${GREEN}║${NC}                                                       
 echo -e "${GREEN}╠════════════════════════════════════════════════════════════════╣${NC}"
 echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}  ${YELLOW}📦 INSTALLED SERVICES${NC}                                        ${GREEN}║${NC}"
-echo -e "${GREEN}║${NC}     • LogicDock Application                                  ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}     • LogicPanel Application                                  ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}     • Traefik Reverse Proxy (SSL)                             ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}     • Terminal Gateway (WebSocket)                            ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}     • MariaDB (MySQL)    - Port 3306                          ${GREEN}║${NC}"
@@ -1399,7 +1399,7 @@ echo -e "${GREEN}║${NC}     • Start panel:         cd ${INSTALL_DIR} && dock
 echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "  ${CYAN}Thank you for choosing LogicDock by cyber-wahid${NC} 💙"
+echo -e "  ${CYAN}Thank you for choosing LogicPanel by cyber-wahid${NC} 💙"
 echo ""
 echo -e "  ${MAGENTA}📚 Documentation: https://github.com/cyber-wahid/panel${NC}"
 echo -e "  ${MAGENTA}🐛 Report Issues: https://github.com/cyber-wahid/panel/issues${NC}"

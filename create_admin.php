@@ -20,10 +20,10 @@ if (file_exists(__DIR__ . '/.env')) {
     $dotenv->load();
 }
 
-$host = getenv('DB_HOST') ?: 'logicdock-db';
-$db = getenv('DB_DATABASE') ?: 'logicdock';
-$user = getenv('DB_USERNAME') ?: 'logicdock';
-$pass = getenv('DB_PASSWORD') ?: 'logicdock';
+$host = getenv('DB_HOST') ?: 'logicpanel-db';
+$db = getenv('DB_DATABASE') ?: 'logicpanel';
+$user = getenv('DB_USERNAME') ?: 'logicpanel';
+$pass = getenv('DB_PASSWORD') ?: 'logicpanel';
 
 echo "Connecting to database...\n";
 

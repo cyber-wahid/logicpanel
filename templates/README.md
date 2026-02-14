@@ -1,6 +1,6 @@
-# LogicDock Templates Documentation
+# LogicPanel Templates Documentation
 
-This directory contains all the UI templates for LogicDock.
+This directory contains all the UI templates for LogicPanel.
 
 ## 📁 Directory Structure
 

@@ -1,6 +1,6 @@
 networks:
-  # Internal network for LogicDock services
-  logicdock_internal:
+  # Internal network for LogicPanel services
+  logicpanel_internal:
     driver: bridge
 
 volumes:
@@ -8,8 +8,8 @@ volumes:
   postgres_data:
   mongo_data:
   redis_data:
-  logicdock_db_maria_data:
-  logicdock_user_apps: # Let's Encrypt certificate storage
+  logicpanel_db_maria_data:
+  logicpanel_user_apps: # Let's Encrypt certificate storage
 
   # Traefik logs
   traefik_logs:
@@ -19,7 +19,7 @@ services:
   # Traefik - Reverse Proxy & SSL Termination
   traefik:
     image: traefik:v3.0
-    container_name: logicdock_traefik
+    container_name: logicpanel_traefik
     restart: unless-stopped
     depends_on:
       - docker-proxy
@@ -39,9 +39,9 @@ services:
       - ./letsencrypt:/letsencrypt
       - traefik_logs:/var/log/traefik
     environment:
-      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=${ADMIN_EMAIL:-admin@logicdock.cloud}
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=${ADMIN_EMAIL:-admin@logicpanel.cloud}
     networks:
-      - logicdock_internal
+      - logicpanel_internal
     healthcheck:
       test: [ "CMD", "traefik", "healthcheck", "--ping" ]
       interval: 10s
@@ -54,7 +54,7 @@ services:
   # Docker Socket Proxy - Secure Docker API access
   docker-proxy:
     image: tecnativa/docker-socket-proxy:latest
-    container_name: logicdock_socket_proxy
+    container_name: logicpanel_socket_proxy
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -77,34 +77,34 @@ services:
       - EVENTS=1
       - PING=1
     networks:
-      - logicdock_internal
+      - logicpanel_internal
 
-  # LogicDock Application (The Dashboard)
+  # LogicPanel Application (The Dashboard)
   app:
-    image: ghcr.io/logicdock/logicdock:latest
+    image: ghcr.io/cyber-wahid/logicpanel:latest
     build: .
-    container_name: logicdock_app
+    container_name: logicpanel_app
     restart: unless-stopped
     # Ports exposed via Traefik, not directly
     expose:
       - "80"
     environment:
       - DB_CONNECTION=mysql
-      - DB_HOST=logicdock-db
+      - DB_HOST=logicpanel-db
       - DB_PORT=3306
-      - DB_DATABASE=${DB_DATABASE:-logicdock}
-      - DB_USERNAME=${DB_USERNAME:-logicdock}
-      - DB_PASSWORD=${DB_PASSWORD:-logicdock_password}
+      - DB_DATABASE=${DB_DATABASE:-logicpanel}
+      - DB_USERNAME=${DB_USERNAME:-logicpanel}
+      - DB_PASSWORD=${DB_PASSWORD:-logicpanel_password}
       - MYSQL_CONTAINER=lp-mysql-mother
       - POSTGRES_CONTAINER=lp-postgres-mother
       - MONGO_CONTAINER=lp-mongo-mother
       # Docker Configuration - Use Proxy
       - DOCKER_HOST=tcp://docker-proxy:2375
-      - DOCKER_NETWORK=${DOCKER_NETWORK:-panel_logicdock_internal}
+      - DOCKER_NETWORK=${DOCKER_NETWORK:-panel_logicpanel_internal}
       - USER_APPS_PATH=/var/www/html/storage/user-apps
-      - USER_APPS_HOST_PATH=${USER_APPS_HOST_PATH:-/opt/logicdock/storage/user-apps}
-      - APP_DOMAIN=${PANEL_DOMAIN:-logicdock.cloud}
-      - PANEL_DOMAIN=${PANEL_DOMAIN:-logicdock.cloud}
+      - USER_APPS_HOST_PATH=${USER_APPS_HOST_PATH:-/opt/logicpanel/storage/user-apps}
+      - APP_DOMAIN=${PANEL_DOMAIN:-logicpanel.cloud}
+      - PANEL_DOMAIN=${PANEL_DOMAIN:-logicpanel.cloud}
       - MASTER_PORT=${MASTER_PORT:-999}
       - USER_PORT=${USER_PORT:-777}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@localhost}
@@ -112,7 +112,7 @@ services:
     volumes:
       - .:/var/www/html
     networks:
-      - logicdock_internal
+      - logicpanel_internal
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -122,7 +122,7 @@ services:
       retries: 3
       start_period: 60s
     depends_on:
-      logicdock-db:
+      logicpanel-db:
         condition: service_healthy
       mysql:
         condition: service_started
@@ -146,7 +146,7 @@ services:
       - "traefik.http.routers.userpanel.tls=true"
       - "traefik.http.routers.userpanel.tls.certresolver=letsencrypt"
       - "traefik.http.routers.userpanel.tls.domains[0].main=${PANEL_DOMAIN:-localhost}"
-      - "traefik.http.routers.userpanel.service=logicdock-app"
+      - "traefik.http.routers.userpanel.service=logicpanel-app"
       - "traefik.http.routers.userpanel.middlewares=userpanel-headers@file"
 
       # Master Panel Router (Port 999) - HTTPS with TLS
@@ -155,7 +155,7 @@ services:
       - "traefik.http.routers.masterpanel.tls=true"
       - "traefik.http.routers.masterpanel.tls.certresolver=letsencrypt"
       - "traefik.http.routers.masterpanel.tls.domains[0].main=${PANEL_DOMAIN:-localhost}"
-      - "traefik.http.routers.masterpanel.service=logicdock-app"
+      - "traefik.http.routers.masterpanel.service=logicpanel-app"
       - "traefik.http.routers.masterpanel.middlewares=masterpanel-headers@file"
 
       # Default HTTPS Router (Port 443) - redirects to User Panel
@@ -164,16 +164,16 @@ services:
       - "traefik.http.routers.default.tls=true"
       - "traefik.http.routers.default.tls.certresolver=letsencrypt"
       - "traefik.http.routers.default.tls.domains[0].main=${PANEL_DOMAIN:-localhost}"
-      - "traefik.http.routers.default.service=logicdock-app"
+      - "traefik.http.routers.default.service=logicpanel-app"
 
       # Service Definition
-      - "traefik.http.services.logicdock-app.loadbalancer.server.port=80"
+      - "traefik.http.services.logicpanel-app.loadbalancer.server.port=80"
 
   # Terminal Gateway (PHP Ratchet Sidecar)
   terminal-gateway:
-    image: ghcr.io/logicdock/logicdock/gateway:latest
+    image: ghcr.io/cyber-wahid/logicpanel/gateway:latest
     build: ./services/gateway
-    container_name: logicdock_gateway
+    container_name: logicpanel_gateway
     restart: unless-stopped
     expose:
       - "3002"
@@ -182,7 +182,7 @@ services:
     environment:
       - JWT_SECRET=${JWT_SECRET}
     networks:
-      - logicdock_internal
+      - logicpanel_internal
     labels:
       - "traefik.enable=true"
       # WebSocket Router for Terminal
@@ -193,20 +193,20 @@ services:
       - "traefik.http.routers.terminal-ws.service=terminal-gateway"
       - "traefik.http.services.terminal-gateway.loadbalancer.server.port=3002"
 
-  # LogicDock Dedicated Database (MariaDB 10.11)
-  logicdock-db:
+  # LogicPanel Dedicated Database (MariaDB 10.11)
+  logicpanel-db:
     image: mariadb:10.11
-    container_name: ${DB_HOST_MAIN:-logicdock_db}
+    container_name: ${DB_HOST_MAIN:-logicpanel_db}
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-logicdock}
-      MYSQL_USER: ${DB_USERNAME:-logicdock}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-logicdock_password}
+      MYSQL_DATABASE: ${DB_DATABASE:-logicpanel}
+      MYSQL_USER: ${DB_USERNAME:-logicpanel}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-logicpanel_password}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     volumes:
-      - logicdock_db_maria_data:/var/lib/mysql
+      - logicpanel_db_maria_data:/var/lib/mysql
     networks:
-      - logicdock_internal
+      - logicpanel_internal
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -236,7 +236,7 @@ services:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
-      - logicdock_internal
+      - logicpanel_internal
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -261,7 +261,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
-      - logicdock_internal
+      - logicpanel_internal
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -285,7 +285,7 @@ services:
       - mongo_data:/data/db
       - ./docker/mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
     networks:
-      - logicdock_internal
+      - logicpanel_internal
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -297,13 +297,13 @@ services:
   # Redis - For Queue and Cache
   redis:
     image: redis:7-alpine
-    container_name: logicdock_redis
+    container_name: logicpanel_redis
     restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
     networks:
-      - logicdock_internal
+      - logicpanel_internal
     deploy:
       resources:
         limits:
@@ -312,9 +312,9 @@ services:
 
   # DB Provisioner Service (Microservice)
   db-provisioner:
-    image: ghcr.io/logicdock/logicdock/db-provisioner:latest
+    image: ghcr.io/cyber-wahid/logicpanel/db-provisioner:latest
     build: ./docker/db-provisioner
-    container_name: logicdock_db_provisioner
+    container_name: logicpanel_db_provisioner
     restart: unless-stopped
     # Expose port mostly for debugging, internal comm uses network
     ports:
@@ -332,7 +332,7 @@ services:
       - MONGO_PORT=27017
       - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
     networks:
-      - logicdock_internal
+      - logicpanel_internal
     depends_on:
       - mysql
       - postgres
@@ -341,10 +341,10 @@ services:
       # Adminer - Database Management
   adminer:
     image: adminer:latest
-    container_name: logicdock_adminer
+    container_name: logicpanel_adminer
     restart: unless-stopped
     networks:
-      - logicdock_internal
+      - logicpanel_internal
     environment:
       ADMINER_DEFAULT_SERVER: mysql
     labels:

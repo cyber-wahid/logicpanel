@@ -1,5 +1,5 @@
 {
-    "name": "logicdock/control-panel",
+    "name": "logicpanel/control-panel",
     "description": "Secure shared-hosting control panel for Node.js and Python applications",
     "type": "project",
     "license": "GPL-3.0-or-later",
@@ -23,7 +23,7 @@
     },
     "autoload": {
         "psr-4": {
-            "LogicDock\\": "src/"
+            "LogicPanel\\": "src/"
         }
     },
     "autoload-dev": {

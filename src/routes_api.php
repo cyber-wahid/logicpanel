@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 use Slim\App;
 use Slim\Routing\RouteCollectorProxy;
-use LogicDock\Application\Controllers\AuthController;
-use LogicDock\Application\Controllers\Master\AccountController;
-use LogicDock\Application\Controllers\Master\PackageController;
-use LogicDock\Application\Controllers\Master\ServiceController as MasterServiceController;
-use LogicDock\Application\Controllers\Master\DatabaseController as MasterDatabaseController;
-use LogicDock\Application\Controllers\Master\DomainController;
-use LogicDock\Application\Middleware\ApiTokenMiddleware;
+use LogicPanel\Application\Controllers\AuthController;
+use LogicPanel\Application\Controllers\Master\AccountController;
+use LogicPanel\Application\Controllers\Master\PackageController;
+use LogicPanel\Application\Controllers\Master\ServiceController as MasterServiceController;
+use LogicPanel\Application\Controllers\Master\DatabaseController as MasterDatabaseController;
+use LogicPanel\Application\Controllers\Master\DomainController;
+use LogicPanel\Application\Middleware\ApiTokenMiddleware;
 
 /**
  * RESTful API Routes for WHMCS/Blesta Integration

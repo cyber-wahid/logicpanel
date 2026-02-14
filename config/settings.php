@@ -2,7 +2,7 @@
 
 return [
     'app' => [
-        'name' => $_ENV['APP_NAME'] ?? 'LogicDock',
+        'name' => $_ENV['APP_NAME'] ?? 'LogicPanel',
         'env' => $_ENV['APP_ENV'] ?? 'production',
         'debug' => filter_var($_ENV['APP_DEBUG'] ?? false, FILTER_VALIDATE_BOOLEAN),
         'url' => $_ENV['APP_URL'] ?? 'http://localhost',
@@ -14,13 +14,13 @@ return [
         'host' => (function () {
             $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
             // If in non-docker environment and host is docker hostname, fallback to localhost
-            if ($host === 'logicdock-db' && strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            if ($host === 'logicpanel-db' && strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
                 return '127.0.0.1';
             }
             return $host;
         })(),
         'port' => $_ENV['DB_PORT'] ?? 3306,
-        'database' => $_ENV['DB_DATABASE'] ?? 'logicdock',
+        'database' => $_ENV['DB_DATABASE'] ?? 'logicpanel',
         'username' => $_ENV['DB_USERNAME'] ?? 'root',
         'password' => $_ENV['DB_PASSWORD'] ?? '',
         'charset' => 'utf8mb4',
@@ -40,9 +40,9 @@ return [
 
     'docker' => [
         'socket' => $_ENV['DOCKER_SOCKET'] ?? '/var/run/docker.sock',
-        'network' => $_ENV['DOCKER_NETWORK'] ?? 'logicdock_network',
+        'network' => $_ENV['DOCKER_NETWORK'] ?? 'logicpanel_network',
         'user_apps_path' => $_ENV['USER_APPS_PATH'] ?? __DIR__ . '/../storage/user-apps',
-        'user_apps_volume' => $_ENV['USER_APPS_VOLUME'] ?? 'logicdock_logicdock_user_apps',
+        'user_apps_volume' => $_ENV['USER_APPS_VOLUME'] ?? 'logicpanel_logicpanel_user_apps',
     ],
 
     'db_provisioner' => [

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== LogicDock Container Starting ==="
+echo "=== LogicPanel Container Starting ==="
 
 # Fix docker socket permissions
 if [ -S /var/run/docker.sock ]; then
@@ -34,8 +34,8 @@ cat >> /etc/apache2/sites-enabled/000-default.conf << 'WSEOF'
 
 # WebSocket Proxy for Terminal Gateway
 <Location /ws/terminal>
-    ProxyPass ws://logicdock_gateway:3002
-    ProxyPassReverse ws://logicdock_gateway:3002
+    ProxyPass ws://logicpanel_gateway:3002
+    ProxyPassReverse ws://logicpanel_gateway:3002
     ProxyPreserveHost On
 </Location>
 WSEOF
@@ -61,7 +61,7 @@ if [ ! -f "$SETTINGS_FILE" ] || ! grep -q '"hostname"' "$SETTINGS_FILE" 2>/dev/n
     "hostname": "${PANEL_DOMAIN:-${VIRTUAL_HOST:-localhost}}",
     "master_port": "${MASTER_PORT:-999}",
     "user_port": "${USER_PORT:-777}",
-    "company_name": "LogicDock",
+    "company_name": "LogicPanel",
     "contact_email": "${ADMIN_EMAIL:-admin@localhost}",
     "enable_ssl": "1",
     "letsencrypt_email": "${ADMIN_EMAIL:-admin@localhost}",
@@ -87,10 +87,10 @@ else
     # Wait for database
     MAX_RETRIES=30
     RETRY_COUNT=0
-    DB_HOST="${DB_HOST:-logicdock-db}"
-    DB_USER="${DB_USERNAME:-logicdock}"
-    DB_PASS="${DB_PASSWORD:-logicdock_password}"
-    DB_NAME="${DB_DATABASE:-logicdock}"
+    DB_HOST="${DB_HOST:-logicpanel-db}"
+    DB_USER="${DB_USERNAME:-logicpanel}"
+    DB_PASS="${DB_PASSWORD:-logicpanel_password}"
+    DB_NAME="${DB_DATABASE:-logicpanel}"
     
     while ! mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "SELECT 1" &>/dev/null; do
         RETRY_COUNT=$((RETRY_COUNT + 1))
@@ -116,7 +116,7 @@ else
     fi
 fi
 
-echo "=== LogicDock Ready ==="
+echo "=== LogicPanel Ready ==="
 echo "Note: SSL is handled by Traefik reverse proxy"
 
 # Pass control to the main command (apache2-foreground)

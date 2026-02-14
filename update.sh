@@ -1,12 +1,12 @@
 #!/bin/bash
 ###############################################################################
-# LogicDock Auto-Update Script
+# LogicPanel Auto-Update Script
 # This script pulls the latest version from GitHub and rebuilds containers
 ###############################################################################
 
 set -e  # Exit on error
 
-REPO_URL="https://github.com/LogicDock/logicdock.git"
+REPO_URL="https://github.com/LogicPanel/logicpanel.git"
 BRANCH="main"
 LOG_FILE="/var/www/html/storage/logs/update.log"
 BACKUP_DIR="/var/www/html/storage/backups"
@@ -18,7 +18,7 @@ log() {
 }
 
 log "========================================="
-log "LogicDock Update Started"
+log "LogicPanel Update Started"
 log "========================================="
 
 # Check if we're inside container or on host
@@ -72,10 +72,10 @@ else
     log "Not a git repository. Downloading latest release..."
     
     # Download latest release as zip
-    TEMP_DIR="/tmp/logicdock_update_$TIMESTAMP"
+    TEMP_DIR="/tmp/logicpanel_update_$TIMESTAMP"
     mkdir -p "$TEMP_DIR"
     
-    curl -L "https://github.com/LogicDock/logicdock/archive/refs/heads/$BRANCH.zip" \
+    curl -L "https://github.com/LogicPanel/logicpanel/archive/refs/heads/$BRANCH.zip" \
         -o "$TEMP_DIR/latest.zip" 2>&1 | tee -a "$LOG_FILE"
     
     # Extract (excluding certain directories)
@@ -83,7 +83,7 @@ else
     
     # Copy files (preserve .env and storage)
     rsync -av --exclude='.env' --exclude='storage/logs/*' --exclude='storage/user-apps/*' \
-        "$TEMP_DIR/logicdock-$BRANCH/" . 2>&1 | tee -a "$LOG_FILE"
+        "$TEMP_DIR/logicpanel-$BRANCH/" . 2>&1 | tee -a "$LOG_FILE"
     
     # Cleanup
     rm -rf "$TEMP_DIR"

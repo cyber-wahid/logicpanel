@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-# LogicDock - Uninstaller v3.0
-# Author: LogicDock
-# Description: Completely removes LogicDock and all its data.
+# LogicPanel - Uninstaller v3.0
+# Author: LogicPanel
+# Description: Completely removes LogicPanel and all its data.
 
 set -e
 
-INSTALL_DIR="/opt/logicdock"
+INSTALL_DIR="/opt/logicpanel"
 
 # Colors
 RED='\033[0;31m'
@@ -37,7 +37,7 @@ echo -e "${NC}"
 echo -e "${RED}!!! WARNING: THIS WILL PERMANENTLY DELETE ALL DATA !!!${NC}"
 echo ""
 echo "This will remove:"
-echo "  • All LogicDock containers (app, traefik, gateway, databases)"
+echo "  • All LogicPanel containers (app, traefik, gateway, databases)"
 echo "  • All user application containers"
 echo "  • All databases and data"
 echo "  • All configuration files"
@@ -46,26 +46,26 @@ echo ""
 
 # Handle stdin properly when piped
 echo ""
-read -p "Are you sure you want to uninstall LogicDock? (y/N): " CONFIRM < /dev/tty
+read -p "Are you sure you want to uninstall LogicPanel? (y/N): " CONFIRM < /dev/tty
 
 if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     echo "Uninstall cancelled."
     exit 0
 fi
 
-# --- 2. Stop and Remove LogicDock Containers ---
-log_info "Stopping LogicDock containers..."
+# --- 2. Stop and Remove LogicPanel Containers ---
+log_info "Stopping LogicPanel containers..."
 
-# All LogicDock containers
+# All LogicPanel containers
 CONTAINERS=(
-    "logicdock_app"
-    "logicdock_traefik"
-    "logicdock_socket_proxy"
-    "logicdock_gateway"
-    "logicdock_db"
-    "logicdock_redis"
-    "logicdock_db_provisioner"
-    "logicdock_adminer"
+    "logicpanel_app"
+    "logicpanel_traefik"
+    "logicpanel_socket_proxy"
+    "logicpanel_gateway"
+    "logicpanel_db"
+    "logicpanel_redis"
+    "logicpanel_db_provisioner"
+    "logicpanel_adminer"
 )
 
 for container in "${CONTAINERS[@]}"; do
@@ -87,36 +87,36 @@ for prefix in "lp_sys_" "lp_shared_mysql_" "lp_shared_pg_" "lp_shared_mongo_" "l
     done
 done
 
-# Remove user app containers (logicdock_app_service_*)
+# Remove user app containers (logicpanel_app_service_*)
 log_info "Removing user application containers..."
-USER_CONTAINERS=$(docker ps -a --format '{{.Names}}' | grep "^logicdock_app_service_" || true)
+USER_CONTAINERS=$(docker ps -a --format '{{.Names}}' | grep "^logicpanel_app_service_" || true)
 for container in $USER_CONTAINERS; do
     docker stop "$container" 2>/dev/null || true
     docker rm -f "$container" 2>/dev/null || true
     log_success "Removed user container: $container"
 done
 
-# --- 3. Remove LogicDock Directory ---
+# --- 3. Remove LogicPanel Directory ---
 if [ -d "$INSTALL_DIR" ]; then
-    log_info "Removing LogicDock files..."
+    log_info "Removing LogicPanel files..."
     
     # Stop any remaining compose services
     (cd "$INSTALL_DIR" && docker compose down -v 2>/dev/null || true)
     
     rm -rf "$INSTALL_DIR"
-    log_success "LogicDock files removed."
+    log_success "LogicPanel files removed."
 else
-    log_warn "LogicDock directory not found at $INSTALL_DIR."
+    log_warn "LogicPanel directory not found at $INSTALL_DIR."
 fi
 
 # --- 4. Remove Docker Networks ---
 log_info "Cleaning up Docker networks..."
-docker network rm logicdock_internal 2>/dev/null || true
-docker network rm panel_logicdock_internal 2>/dev/null || true
+docker network rm logicpanel_internal 2>/dev/null || true
+docker network rm panel_logicpanel_internal 2>/dev/null || true
 
 # --- 5. Remove Cron Jobs ---
-log_info "Removing LogicDock cron jobs..."
-crontab -l 2>/dev/null | grep -v "fix-ssl.sh" | grep -v "logicdock" | crontab - 2>/dev/null || true
+log_info "Removing LogicPanel cron jobs..."
+crontab -l 2>/dev/null | grep -v "fix-ssl.sh" | grep -v "logicpanel" | crontab - 2>/dev/null || true
 log_success "Cron jobs removed."
 
 # --- 6. Clean up Docker ---
@@ -134,10 +134,10 @@ echo -e "${GREEN}╔════════════════════
 echo -e "${GREEN}║           ✓ UNINSTALLATION COMPLETE!                        ║${NC}"
 echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "  ${CYAN}All LogicDock components have been removed.${NC}"
+echo -e "  ${CYAN}All LogicPanel components have been removed.${NC}"
 echo ""
 echo -e "  ${YELLOW}To reinstall:${NC}"
-echo -e "  ${CYAN}curl -sSL https://raw.githubusercontent.com/LogicDock/LogicDock/main/install.sh | sudo bash${NC}"
+echo -e "  ${CYAN}curl -sSL https://raw.githubusercontent.com/LogicPanel/LogicPanel/main/install.sh | sudo bash${NC}"
 echo ""
-echo -e "  For more info, visit: ${CYAN}https://logicdock.cloud${NC}"
+echo -e "  For more info, visit: ${CYAN}https://logicpanel.cloud${NC}"
 echo ""

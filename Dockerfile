@@ -46,7 +46,7 @@ RUN sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
 RUN echo "Listen 80" > /etc/apache2/ports.conf
 
 # Custom PHP Config
-RUN echo "upload_max_filesize = 512M\npost_max_size = 512M\nmemory_limit = 512M\nmax_execution_time = 300" > /usr/local/etc/php/conf.d/logicdock.ini
+RUN echo "upload_max_filesize = 512M\npost_max_size = 512M\nmemory_limit = 512M\nmax_execution_time = 300" > /usr/local/etc/php/conf.d/logicpanel.ini
 
 # Fix permissions and ensure directories exist
 RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views storage/user-apps \

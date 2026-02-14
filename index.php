@@ -226,7 +226,7 @@ if ($path !== 'login' && strpos($path, 'login') === false) {
 
 // Router
 if (
-    $path === '' || $path === 'index.php' || $path === 'logicdock' || $path === 'dashboard' || strpos(
+    $path === '' || $path === 'index.php' || $path === 'logicpanel' || $path === 'dashboard' || strpos(
         $path,
         'dashboard'
     ) === 0
