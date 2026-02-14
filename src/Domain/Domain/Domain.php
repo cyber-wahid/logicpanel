@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Domain\Domain;
+namespace LogicPanel\Domain\Domain;
 
 use Illuminate\Database\Eloquent\Model;
 
@@ -20,7 +20,7 @@ class Domain extends Model
 
     public function user()
     {
-        return $this->belongsTo(\LogicDock\Domain\User\User::class);
+        return $this->belongsTo(\LogicPanel\Domain\User\User::class);
     }
 
     public function parent()

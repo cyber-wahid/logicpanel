@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Controllers;
+namespace LogicPanel\Application\Controllers;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use LogicDock\Domain\Service\Service;
-use LogicDock\Infrastructure\Docker\DockerService;
+use LogicPanel\Domain\Service\Service;
+use LogicPanel\Infrastructure\Docker\DockerService;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Exception\ClientException as GuzzleClientException;
 
@@ -37,7 +37,7 @@ class SystemController
         $userId = $request->getAttribute('userId');
 
         // Get user and package limits
-        $user = \LogicDock\Domain\User\User::with('package')->find($userId);
+        $user = \LogicPanel\Domain\User\User::with('package')->find($userId);
         $diskLimitBytes = 0;
         $memLimitBytes = 0;
         $cpuLimitCores = 0;
@@ -276,10 +276,10 @@ class SystemController
 
         try {
             $client = new GuzzleClient();
-            $res = $client->request('GET', 'https://api.github.com/repos/LogicDock/logicdock/releases/latest', [
+            $res = $client->request('GET', 'https://api.github.com/repos/LogicPanel/logicpanel/releases/latest', [
                 'headers' => [
                     'Accept' => 'application/vnd.github.v3+json',
-                    'User-Agent' => 'LogicDock-System'
+                    'User-Agent' => 'LogicPanel-System'
                 ],
                 'timeout' => 5
             ]);

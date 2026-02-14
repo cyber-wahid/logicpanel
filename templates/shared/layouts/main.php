@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($title ?? 'LogicDock') ?></title>
+    <title><?= htmlspecialchars($title ?? 'LogicPanel') ?></title>
     <link rel="icon" type="image/x-icon" href="<?= $base_url ?? '' ?>/favicon.ico">
 
     <!-- Google Fonts -->
@@ -49,7 +49,7 @@
     </script>
     <script src="<?= $base_url ?? '' ?>/public/assets/dashboard.js"></script>
 
-    <!-- LogicDock cPanel-style CSS -->
+    <!-- LogicPanel cPanel-style CSS -->
     <style>
         :root {
             /* Node.js Inspired Professional Green Palette */
@@ -1396,7 +1396,7 @@
         // Theme handling
         function setTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('logicdock-theme', theme);
+            localStorage.setItem('logicpanel-theme', theme);
         }
 
         function toggleTheme() {
@@ -1418,7 +1418,7 @@
         }
 
         // Load saved theme
-        const savedTheme = localStorage.getItem('logicdock-theme');
+        const savedTheme = localStorage.getItem('logicpanel-theme');
         if (savedTheme) {
             setTheme(savedTheme);
         }

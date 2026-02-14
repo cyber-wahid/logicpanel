@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Controllers\Master;
+namespace LogicPanel\Application\Controllers\Master;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use LogicDock\Domain\Service\Service;
+use LogicPanel\Domain\Service\Service;
 
 class ServiceController
 {
@@ -14,8 +14,8 @@ class ServiceController
     private $dockerService;
 
     public function __construct(
-        \LogicDock\Application\Services\SystemBridgeService $systemBridge,
-        \LogicDock\Infrastructure\Docker\DockerService $dockerService
+        \LogicPanel\Application\Services\SystemBridgeService $systemBridge,
+        \LogicPanel\Infrastructure\Docker\DockerService $dockerService
     ) {
         $this->systemBridge = $systemBridge;
         $this->dockerService = $dockerService;

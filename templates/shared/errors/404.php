@@ -10,7 +10,7 @@ if (!headers_sent()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 - Page Not Found | LogicDock</title>
+    <title>404 - Page Not Found | LogicPanel</title>
     <style>
         body {
             font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -66,7 +66,7 @@ if (!headers_sent()) {
         .btn {
             display: inline-block;
             background-color: #3C873A;
-            /* LogicDock Green */
+            /* LogicPanel Green */
             color: white;
             padding: 12px 28px;
             border-radius: 6px;
@@ -83,7 +83,7 @@ if (!headers_sent()) {
 
 <body>
     <div class="container">
-        <span class="logo">LogicDock</span>
+        <span class="logo">LogicPanel</span>
         <h1>404</h1>
         <h2>Page Not Available</h2>
         <p>Sorry, the page you are looking for could not be found. Please check the URL or return to the dashboard.</p>

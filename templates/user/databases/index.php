@@ -161,7 +161,7 @@ ob_start();
     .btn-primary {
         color: #fff;
         background-color: #3C873A;
-        /* LogicDock Green */
+        /* LogicPanel Green */
         border-color: #3C873A;
     }
 

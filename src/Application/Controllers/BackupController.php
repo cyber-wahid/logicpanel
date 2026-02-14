@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Controllers;
+namespace LogicPanel\Application\Controllers;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use LogicDock\Domain\Service\Service;
+use LogicPanel\Domain\Service\Service;
 use Symfony\Component\Process\Process;
 
 class BackupController

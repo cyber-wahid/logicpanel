@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Services;
+namespace LogicPanel\Application\Services;
 
 use Redis;
 
@@ -19,7 +19,7 @@ class TokenBlacklistService
         try {
             $this->redis = new Redis();
             // Connect to Redis container
-            $this->connected = $this->redis->connect('logicdock_redis', 6379, 1.0);
+            $this->connected = $this->redis->connect('logicpanel_redis', 6379, 1.0);
             
             if (!$this->connected) {
                 $this->loggingService->error("Failed to connect to Redis for token blacklist service");

@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Middleware;
+namespace LogicPanel\Application\Middleware;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use LogicDock\Application\Services\JwtService;
-use LogicDock\Application\Services\TokenBlacklistService;
-use LogicDock\Application\Services\LoggingService;
-use LogicDock\Domain\User\User;
+use LogicPanel\Application\Services\JwtService;
+use LogicPanel\Application\Services\TokenBlacklistService;
+use LogicPanel\Application\Services\LoggingService;
+use LogicPanel\Domain\User\User;
 use Slim\Psr7\Response;
 
 class AuthMiddleware implements MiddlewareInterface
@@ -62,7 +62,7 @@ class AuthMiddleware implements MiddlewareInterface
             $apiKeyHeader = $request->getHeaderLine('X-API-Key');
             if (!empty($apiKeyHeader)) {
                 try {
-                    $apiKey = \LogicDock\Domain\User\ApiKey::where('key_hash', $apiKeyHeader)->first();
+                    $apiKey = \LogicPanel\Domain\User\ApiKey::where('key_hash', $apiKeyHeader)->first();
                     if ($apiKey) {
                         // Update Last Used
                         $apiKey->last_used_at = date('Y-m-d H:i:s');

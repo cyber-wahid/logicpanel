@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Controllers;
+namespace LogicPanel\Application\Controllers;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use LogicDock\Domain\Cron\CronJob;
-use LogicDock\Domain\Service\Service;
-use LogicDock\Infrastructure\Docker\DockerService;
+use LogicPanel\Domain\Cron\CronJob;
+use LogicPanel\Domain\Service\Service;
+use LogicPanel\Infrastructure\Docker\DockerService;
 
 class CronController
 {

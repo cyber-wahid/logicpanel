@@ -35,7 +35,7 @@ if (empty($serverIp) || $serverIp === '127.0.0.1' || $serverIp === 'localhost') 
 
     // 3. Final fallback - use external service (cached for performance)
     if (empty($serverIp) || $serverIp === '127.0.0.1') {
-        $cacheFile = '/tmp/logicdock_public_ip.txt';
+        $cacheFile = '/tmp/logicpanel_public_ip.txt';
         $cacheTime = 3600; // Cache for 1 hour
 
         if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTime) {

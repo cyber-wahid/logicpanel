@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Domain\Service;
+namespace LogicPanel\Domain\Service;
 
 use Illuminate\Database\Eloquent\Model;
 
@@ -37,12 +37,12 @@ class Service extends Model
 
     public function user()
     {
-        return $this->belongsTo(\LogicDock\Domain\User\User::class);
+        return $this->belongsTo(\LogicPanel\Domain\User\User::class);
     }
 
     public function databases()
     {
-        return $this->hasMany(\LogicDock\Domain\Database\Database::class);
+        return $this->hasMany(\LogicPanel\Domain\Database\Database::class);
     }
 
     public function isRunning(): bool

@@ -1,7 +1,7 @@
 {
-    "name": "logicdock-db-provisioner",
+    "name": "logicpanel-db-provisioner",
     "version": "1.0.0",
-    "description": "Database provisioner microservice for LogicDock",
+    "description": "Database provisioner microservice for LogicPanel",
     "main": "server.js",
     "scripts": {
         "start": "node server.js",

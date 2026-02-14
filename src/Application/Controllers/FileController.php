@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Controllers;
+namespace LogicPanel\Application\Controllers;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use LogicDock\Domain\Service\Service;
+use LogicPanel\Domain\Service\Service;
 
 class FileController
 {
@@ -113,7 +113,7 @@ class FileController
             ]);
         } catch (\Throwable $e) {
             // Log the error for debugging
-            $logFile = sys_get_temp_dir() . '/logicdock_file_error.log';
+            $logFile = sys_get_temp_dir() . '/logicpanel_file_error.log';
             file_put_contents($logFile, date('Y-m-d H:i:s') . ' - ' . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n", FILE_APPEND);
 
             return $this->jsonResponse($response, ['error' => 'Internal Server Error: ' . $e->getMessage()], 500);

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Services;
+namespace LogicPanel\Application\Services;
 
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
@@ -13,7 +13,7 @@ class LoggingService
 {
     private Logger $logger;
 
-    public function __construct(string $channel = 'LogicDock', string $path = 'php://stderr', string $level = 'debug')
+    public function __construct(string $channel = 'LogicPanel', string $path = 'php://stderr', string $level = 'debug')
     {
         $this->logger = new Logger($channel);
 

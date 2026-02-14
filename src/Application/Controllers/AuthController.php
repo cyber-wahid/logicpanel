@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Controllers;
+namespace LogicPanel\Application\Controllers;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use LogicDock\Application\Services\JwtService;
-use LogicDock\Application\Services\TokenBlacklistService;
-use LogicDock\Domain\User\User;
+use LogicPanel\Application\Services\JwtService;
+use LogicPanel\Application\Services\TokenBlacklistService;
+use LogicPanel\Domain\User\User;
 
 class AuthController
 {
@@ -259,7 +259,7 @@ class AuthController
 
         // Return only safe/public settings
         $public = [
-            'company_name' => $settings['company_name'] ?? 'LogicDock',
+            'company_name' => $settings['company_name'] ?? 'LogicPanel',
             'shared_domain' => $settings['shared_domain'] ?? '',
             'hostname' => $settings['hostname'] ?? '',
         ];

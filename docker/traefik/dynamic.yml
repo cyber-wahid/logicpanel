@@ -1,13 +1,13 @@
-# Traefik Dynamic Configuration for LogicDock
+# Traefik Dynamic Configuration for LogicPanel
 # Middlewares and error handling only (routers defined in docker-compose.yml labels)
 
 http:
   # Services
   services:
-    logicdock-app:
+    logicpanel-app:
       loadBalancer:
         servers:
-          - url: "http://logicdock_app:80"
+          - url: "http://logicpanel_app:80"
         healthCheck:
           path: "/public/health.php"
           interval: "30s"
@@ -16,7 +16,7 @@ http:
     terminal-gateway:
       loadBalancer:
         servers:
-          - url: "http://logicdock_gateway:3002"
+          - url: "http://logicpanel_gateway:3002"
 
   # Routers
   routers:
@@ -25,7 +25,7 @@ http:
       entryPoints:
         - userpanel
       rule: "PathPrefix(`/`)"
-      service: logicdock-app
+      service: logicpanel-app
       middlewares:
         - userpanel-headers
         - security-headers
@@ -38,7 +38,7 @@ http:
       entryPoints:
         - masterpanel
       rule: "PathPrefix(`/`)"
-      service: logicdock-app
+      service: logicpanel-app
       middlewares:
         - masterpanel-headers
         - security-headers
@@ -51,7 +51,7 @@ http:
       entryPoints:
         - websecure
       rule: "PathPrefix(`/`)"
-      service: logicdock-app
+      service: logicpanel-app
       middlewares:
         - security-headers
       tls:
@@ -111,5 +111,5 @@ http:
       errors:
         status:
           - "500-599"
-        service: logicdock-app
+        service: logicpanel-app
         query: "/public/error.php?code={status}"

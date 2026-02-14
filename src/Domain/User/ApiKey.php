@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Domain\User;
+namespace LogicPanel\Domain\User;
 
 use Illuminate\Database\Eloquent\Model;
 

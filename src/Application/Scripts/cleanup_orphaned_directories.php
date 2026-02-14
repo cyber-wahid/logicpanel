@@ -12,16 +12,16 @@
 require_once __DIR__ . '/../../../vendor/autoload.php';
 
 use Illuminate\Database\Capsule\Manager as Capsule;
-use LogicDock\Domain\Service\Service;
+use LogicPanel\Domain\Service\Service;
 
 // Initialize database connection
 $capsule = new Capsule;
 $capsule->addConnection([
     'driver' => 'mysql',
-    'host' => getenv('DB_HOST') ?: 'logicdock-db',
-    'database' => getenv('DB_DATABASE') ?: 'logicdock',
-    'username' => getenv('DB_USERNAME') ?: 'logicdock',
-    'password' => getenv('DB_PASSWORD') ?: 'logicdock_password',
+    'host' => getenv('DB_HOST') ?: 'logicpanel-db',
+    'database' => getenv('DB_DATABASE') ?: 'logicpanel',
+    'username' => getenv('DB_USERNAME') ?: 'logicpanel',
+    'password' => getenv('DB_PASSWORD') ?: 'logicpanel_password',
     'charset' => 'utf8mb4',
     'collation' => 'utf8mb4_unicode_ci',
     'prefix' => '',

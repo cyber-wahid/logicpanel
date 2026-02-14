@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Controllers\Master;
+namespace LogicPanel\Application\Controllers\Master;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use LogicDock\Domain\User\User;
+use LogicPanel\Domain\User\User;
 
 class ResellerController
 {

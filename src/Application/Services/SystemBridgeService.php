@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Services;
+namespace LogicPanel\Application\Services;
 
 use Exception;
 
 /**
  * SystemBridgeService
  * 
- * Provides an interface to the privileged 'logicdock-helper' script.
+ * Provides an interface to the privileged 'logicpanel-helper' script.
  * Acts as the bridge between the Web Application (www-data) and the System (root).
  */
 class SystemBridgeService
@@ -22,7 +22,7 @@ class SystemBridgeService
         // Detect Environment and set helper path
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
             // Windows / XAMPP Dev Mode
-            $binPath = realpath(__DIR__ . '/../../../../bin/logicdock-helper');
+            $binPath = realpath(__DIR__ . '/../../../../bin/logicpanel-helper');
             if ($binPath && file_exists($binPath)) {
                 $this->helperCommand = 'php "' . $binPath . '"';
                 $this->isEnabled = true;
@@ -32,13 +32,13 @@ class SystemBridgeService
             }
         } else {
             // Linux / Docker Mode - No sudo needed, container runs as root
-            $dockerPath = '/var/www/html/bin/logicdock-helper';
+            $dockerPath = '/var/www/html/bin/logicpanel-helper';
             if (file_exists($dockerPath)) {
                 $this->helperCommand = "php \"{$dockerPath}\"";
                 $this->isEnabled = true;
             } else {
                 // Production standalone - check if we're root or need sudo
-                $helperPath = '/usr/local/bin/logicdock-helper';
+                $helperPath = '/usr/local/bin/logicpanel-helper';
                 if (file_exists($helperPath)) {
                     if (getmyuid() === 0) {
                         $this->helperCommand = $helperPath;

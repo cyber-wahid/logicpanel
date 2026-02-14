@@ -1,5 +1,5 @@
 /**
- * LogicDock - Dashboard JavaScript
+ * LogicPanel - Dashboard JavaScript
  * Refined for premium UI and robust performance.
  */
 

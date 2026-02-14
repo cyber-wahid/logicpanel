@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Controllers\Master;
+namespace LogicPanel\Application\Controllers\Master;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use LogicDock\Domain\User\User;
-use LogicDock\Domain\Package\Package;
+use LogicPanel\Domain\User\User;
+use LogicPanel\Domain\Package\Package;
 
 class AccountController
 {
@@ -16,9 +16,9 @@ class AccountController
     private $jwtService;
 
     public function __construct(
-        \LogicDock\Application\Services\SystemBridgeService $systemBridge,
-        \LogicDock\Infrastructure\Docker\DockerService $dockerService,
-        \LogicDock\Application\Services\JwtService $jwtService
+        \LogicPanel\Application\Services\SystemBridgeService $systemBridge,
+        \LogicPanel\Infrastructure\Docker\DockerService $dockerService,
+        \LogicPanel\Application\Services\JwtService $jwtService
     ) {
         $this->systemBridge = $systemBridge;
         $this->dockerService = $dockerService;

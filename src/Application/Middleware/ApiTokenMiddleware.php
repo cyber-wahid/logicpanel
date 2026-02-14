@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Middleware;
+namespace LogicPanel\Application\Middleware;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use LogicDock\Domain\User\ApiKey;
+use LogicPanel\Domain\User\ApiKey;
 
 class ApiTokenMiddleware implements MiddlewareInterface
 {

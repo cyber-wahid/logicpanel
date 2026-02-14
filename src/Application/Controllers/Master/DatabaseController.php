@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Controllers\Master;
+namespace LogicPanel\Application\Controllers\Master;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use LogicDock\Domain\Database\Database;
+use LogicPanel\Domain\Database\Database;
 
-use LogicDock\Infrastructure\Database\DatabaseProvisionerService;
+use LogicPanel\Infrastructure\Database\DatabaseProvisionerService;
 
 class DatabaseController
 {

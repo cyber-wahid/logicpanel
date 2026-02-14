@@ -4,9 +4,9 @@
         <button class="mobile-menu-btn header-btn" onclick="toggleSidebar()">
             <i data-lucide="menu"></i>
         </button>
-        <!-- Desktop: Page Title, Mobile: LogicDock brand -->
+        <!-- Desktop: Page Title, Mobile: LogicPanel brand -->
         <h1 class="header-title desktop-only"><?= htmlspecialchars($page_title ?? 'Tools') ?></h1>
-        <a href="<?= $base_url ?? '' ?>/" class="header-brand mobile-only">LogicDock</a>
+        <a href="<?= $base_url ?? '' ?>/" class="header-brand mobile-only">LogicPanel</a>
     </div>
 
     <div class="header-center">

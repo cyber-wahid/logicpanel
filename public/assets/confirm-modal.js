@@ -1,5 +1,5 @@
 /**
- * LogicDock Custom Confirmation Modal
+ * LogicPanel Custom Confirmation Modal
  * Replaces browser's native confirm() with a styled modal
  */
 

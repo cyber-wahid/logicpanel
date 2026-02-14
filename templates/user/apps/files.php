@@ -22,7 +22,7 @@ $serviceId = $_GET['id'] ?? null;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="auth-token" content="<?php echo htmlspecialchars($_SESSION['lp_session_token'] ?? ''); ?>">
-    <title>File Manager - LogicDock</title>
+    <title>File Manager - LogicPanel</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <!-- Use FontAwesome for cPanel like icons -->

@@ -18,7 +18,7 @@ ob_start();
                 <div class="row">
                     <div class="col">
                         <label class="form-label">Company Name</label>
-                        <input type="text" name="company_name" class="form-control" placeholder="e.g. LogicDock">
+                        <input type="text" name="company_name" class="form-control" placeholder="e.g. LogicPanel">
                     </div>
                     <div class="col">
                         <label class="form-label">Admin Email</label>

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Controllers\Master;
+namespace LogicPanel\Application\Controllers\Master;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use LogicDock\Domain\Package\Package;
+use LogicPanel\Domain\Package\Package;
 
 class PackageController
 {
@@ -47,7 +47,7 @@ class PackageController
                 // Manually load creator if created_by is set
                 if ($package->created_by) {
                     try {
-                        $creator = \LogicDock\Domain\User\User::find($package->created_by);
+                        $creator = \LogicPanel\Domain\User\User::find($package->created_by);
                         if ($creator) {
                             $data['creator'] = [
                                 'id' => $creator->id,

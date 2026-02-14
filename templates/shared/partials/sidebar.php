@@ -1,7 +1,7 @@
-<!-- LogicDock Sidebar - cPanel Style -->
+<!-- LogicPanel Sidebar - cPanel Style -->
 <aside class="lp-sidebar">
     <a href="<?= $base_url ?? '' ?>/" class="lp-sidebar-brand">
-        <img src="<?= $base_url ?? '' ?>/public/assets/logo.svg" alt="LogicDock" class="lp-brand-logo">
+        <img src="<?= $base_url ?? '' ?>/public/assets/logo.svg" alt="LogicPanel" class="lp-brand-logo">
     </a>
 
     <nav class="lp-sidebar-nav">
@@ -82,7 +82,7 @@
 
 <style>
     /* ========================================
-   LogicDock Sidebar - Clean Rebuild
+   LogicPanel Sidebar - Clean Rebuild
    ======================================== */
     .lp-sidebar {
         width: 200px;

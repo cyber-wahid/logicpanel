@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Controllers\Master;
+namespace LogicPanel\Application\Controllers\Master;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use LogicDock\Domain\Domain\Domain;
+use LogicPanel\Domain\Domain\Domain;
 
 class DomainController
 {
@@ -51,7 +51,7 @@ class DomainController
                     // Service domain column is comma-separated string.
                     // We check if service belongs to user and domain string contains this domain.
                     // This is "loose" linking but effective given current schema.
-                    $service = \LogicDock\Domain\Service\Service::where('user_id', $domain->user_id)
+                    $service = \LogicPanel\Domain\Service\Service::where('user_id', $domain->user_id)
                         ->where('domain', 'LIKE', "%{$domain->name}%")
                         ->first();
 
@@ -113,7 +113,7 @@ class DomainController
         // Reseller Permission Check
         $currentUser = $request->getAttribute('user');
         if ($currentUser && $currentUser->role === 'reseller') {
-            $user = \LogicDock\Domain\User\User::find($user_id);
+            $user = \LogicPanel\Domain\User\User::find($user_id);
             if (!$user || $user->owner_id !== $currentUser->id) {
                 return $this->jsonResponse($response, ['error' => 'You do not have permission to assign domains to this user.'], 403);
             }
@@ -154,7 +154,7 @@ class DomainController
         // Reseller Permission Check
         $currentUser = $request->getAttribute('user');
         if ($currentUser && $currentUser->role === 'reseller') {
-            $user = \LogicDock\Domain\User\User::find($domain->user_id);
+            $user = \LogicPanel\Domain\User\User::find($domain->user_id);
             if (!$user || $user->owner_id !== $currentUser->id) {
                 return $this->jsonResponse($response, ['error' => 'You do not have permission to delete this domain.'], 403);
             }

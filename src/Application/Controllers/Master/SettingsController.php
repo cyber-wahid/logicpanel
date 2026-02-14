@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Controllers\Master;
+namespace LogicPanel\Application\Controllers\Master;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use LogicDock\Domain\Setting\Setting;
+use LogicPanel\Domain\Setting\Setting;
 use Firebase\JWT\JWT;
 
 class SettingsController
@@ -170,8 +170,8 @@ class SettingsController
     {
         // Generate Short-lived JWT for Terminal Gateway
         $payload = [
-            'iss' => 'logicdock-backend',
-            'aud' => 'logicdock-gateway',
+            'iss' => 'logicpanel-backend',
+            'aud' => 'logicpanel-gateway',
             'iat' => time(),
             'exp' => time() + 60,
             'sub' => 'root',

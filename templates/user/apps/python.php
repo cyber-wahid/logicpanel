@@ -24,7 +24,7 @@ ob_start();
 
         <div class="db-form-group">
             <label for="appDomain">Custom Domain (Optional):</label>
-            <input type="text" id="appDomain" class="form-control" placeholder="e.g. logicdock.com">
+            <input type="text" id="appDomain" class="form-control" placeholder="e.g. logicpanel.com">
             <small style="color:var(--text-secondary);font-size:11px;">Leave empty to use the default subdomain
                 (appname.<?= $app_base_domain ?>).</small>
         </div>

@@ -25,7 +25,7 @@ if (!$serviceId || !$filePath) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="auth-token" content="<?php echo htmlspecialchars($_SESSION['lp_session_token'] ?? ''); ?>">
     <title>Editor -
-        <?php echo htmlspecialchars(basename($filePath)); ?> - LogicDock
+        <?php echo htmlspecialchars(basename($filePath)); ?> - LogicPanel
     </title>
 
     <!-- CodeMirror CSS -->
@@ -560,7 +560,7 @@ if (!$serviceId || !$filePath) {
 
         function updateTitle() {
             const prefix = hasUnsavedChanges ? '* ' : '';
-            document.title = prefix + 'Editor - ' + filePath.split('/').pop() + ' - LogicDock';
+            document.title = prefix + 'Editor - ' + filePath.split('/').pop() + ' - LogicPanel';
         }
 
         function changeFontSize(size) {

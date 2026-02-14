@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Infrastructure\Database;
+namespace LogicPanel\Infrastructure\Database;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;

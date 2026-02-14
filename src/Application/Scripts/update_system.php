@@ -1,7 +1,7 @@
 #!/usr/bin/env php
 <?php
 /**
- * LogicDock System Update Script
+ * LogicPanel System Update Script
  * 
  * This script handles the update process:
  * 1. Downloads latest version from GitHub
@@ -23,7 +23,7 @@ function logMessage($message) {
 }
 
 logMessage("========================================");
-logMessage("LogicDock Update Process Started");
+logMessage("LogicPanel Update Process Started");
 logMessage("========================================");
 
 // Step 1: Get current and latest version
@@ -32,9 +32,9 @@ logMessage("Current version: $currentVersion");
 
 try {
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://api.github.com/repos/LogicDock/logicdock/releases/latest');
+    curl_setopt($ch, CURLOPT_URL, 'https://api.github.com/repos/LogicPanel/logicpanel/releases/latest');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'LogicDock-Updater');
+    curl_setopt($ch, CURLOPT_USERAGENT, 'LogicPanel-Updater');
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/vnd.github.v3+json']);
     
@@ -92,7 +92,7 @@ if ($returnCode === 0) {
 
 // Step 3: Download latest version
 logMessage("Downloading latest version...");
-$tempDir = sys_get_temp_dir() . "/logicdock_update_$timestamp";
+$tempDir = sys_get_temp_dir() . "/logicpanel_update_$timestamp";
 mkdir($tempDir, 0775, true);
 
 $zipFile = "$tempDir/latest.zip";
@@ -102,7 +102,7 @@ $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $downloadUrl);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-curl_setopt($ch, CURLOPT_USERAGENT, 'LogicDock-Updater');
+curl_setopt($ch, CURLOPT_USERAGENT, 'LogicPanel-Updater');
 curl_setopt($ch, CURLOPT_TIMEOUT, 300);
 curl_setopt($ch, CURLOPT_FILE, fopen($zipFile, 'w'));
 
@@ -130,7 +130,7 @@ if ($zip->open($zipFile) === TRUE) {
 }
 
 // Find extracted directory (GitHub creates a directory with commit hash)
-$extractedDirs = glob("$tempDir/LogicDock-logicdock-*");
+$extractedDirs = glob("$tempDir/LogicPanel-logicpanel-*");
 if (empty($extractedDirs)) {
     logMessage("Error: Could not find extracted directory");
     exit(1);

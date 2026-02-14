@@ -86,7 +86,7 @@ ob_start();
     <div class="card" style="height: fit-content;">
         <div class="card-header">
             <div class="card-title">
-                <i data-lucide="info"></i> About LogicDock
+                <i data-lucide="info"></i> About LogicPanel
             </div>
         </div>
         <div class="card-body" style="padding: 0;">
@@ -108,14 +108,14 @@ ob_start();
             </ul>
             <div style="padding: 15px; border-top: 1px solid var(--border-color); background: var(--bg-input);">
                 <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px; line-height: 1.5;">
-                    LogicDock is open-source software. Updates are pulled directly from the official GitHub repository.
+                    LogicPanel is open-source software. Updates are pulled directly from the official GitHub repository.
                 </p>
                 <div style="display: grid; gap: 10px;">
-                    <a href="https://github.com/LogicDock/LogicDock" target="_blank" class="btn btn-secondary"
+                    <a href="https://github.com/LogicPanel/LogicPanel" target="_blank" class="btn btn-secondary"
                         style="justify-content: center;">
                         <i data-lucide="github"></i> GitHub Repository
                     </a>
-                    <a href="https://docs.logicdock.cloud" target="_blank" class="btn btn-secondary"
+                    <a href="https://docs.logicpanel.cloud" target="_blank" class="btn btn-secondary"
                         style="justify-content: center;">
                         <i data-lucide="book"></i> Documentation
                     </a>

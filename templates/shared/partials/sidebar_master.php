@@ -1,6 +1,6 @@
 <aside class="lp-sidebar">
     <a href="<?= $base_url ?? '' ?>/dashboard" class="lp-sidebar-brand">
-        <img src="<?= $base_url ?? '' ?>/public/assets/logo.svg" alt="LogicDock" class="lp-brand-logo">
+        <img src="<?= $base_url ?? '' ?>/public/assets/logo.svg" alt="LogicPanel" class="lp-brand-logo">
     </a>
 
     <nav class="lp-sidebar-nav">

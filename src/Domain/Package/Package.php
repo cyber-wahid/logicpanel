@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Domain\Package;
+namespace LogicPanel\Domain\Package;
 
 use Illuminate\Database\Eloquent\Model;
 
@@ -37,11 +37,11 @@ class Package extends Model
 
     public function creator()
     {
-        return $this->belongsTo(\LogicDock\Domain\User\User::class, 'created_by');
+        return $this->belongsTo(\LogicPanel\Domain\User\User::class, 'created_by');
     }
 
     public function users()
     {
-        return $this->hasMany(\LogicDock\Domain\User\User::class);
+        return $this->hasMany(\LogicPanel\Domain\User\User::class);
     }
 }

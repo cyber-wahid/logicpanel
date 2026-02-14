@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - LogicDock</title>
+    <title>Login - LogicPanel</title>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -115,7 +115,7 @@
 <body>
 
     <div class="login-card">
-        <div class="logo">LogicDock</div>
+        <div class="logo">LogicPanel</div>
 
         <?php if (isset($error) && $error): ?>
             <div class="error-message">
@@ -138,7 +138,7 @@
         </form>
 
         <div class="footer">
-            &copy; <?= date('Y') ?> LogicDock. All rights reserved.
+            &copy; <?= date('Y') ?> LogicPanel. All rights reserved.
         </div>
     </div>
 

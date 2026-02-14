@@ -1,6 +1,6 @@
 {
-    "name": "logicdock/gateway",
-    "description": "WebSocket Terminal Gateway for LogicDock",
+    "name": "logicpanel/gateway",
+    "description": "WebSocket Terminal Gateway for LogicPanel",
     "require": {
         "cboden/ratchet": "^0.4.4",
         "firebase/php-jwt": "^6.10",

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Application\Services;
+namespace LogicPanel\Application\Services;
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-use LogicDock\Domain\User\User;
+use LogicPanel\Domain\User\User;
 
 class JwtService
 {
@@ -26,7 +26,7 @@ class JwtService
     public function generateToken(User $user): string
     {
         $payload = [
-            'iss' => 'logicdock',
+            'iss' => 'logicpanel',
             'sub' => $user->id,
             'iat' => time(),
             'exp' => time() + $this->expiry,
@@ -47,7 +47,7 @@ class JwtService
     public function generateOneTimeToken(User $user): string
     {
         $payload = [
-            'iss' => 'logicdock',
+            'iss' => 'logicpanel',
             'sub' => $user->id,
             'iat' => time(),
             'exp' => time() + 60, // 60 seconds expiry
@@ -67,7 +67,7 @@ class JwtService
     public function generateRefreshToken(User $user): string
     {
         $payload = [
-            'iss' => 'logicdock',
+            'iss' => 'logicpanel',
             'sub' => $user->id,
             'iat' => time(),
             'exp' => time() + $this->refreshExpiry,

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Domain\User;
+namespace LogicPanel\Domain\User;
 
 use Illuminate\Database\Eloquent\Model;
 
@@ -31,22 +31,22 @@ class User extends Model
 
     public function package()
     {
-        return $this->belongsTo(\LogicDock\Domain\Package\Package::class);
+        return $this->belongsTo(\LogicPanel\Domain\Package\Package::class);
     }
 
     public function services()
     {
-        return $this->hasMany(\LogicDock\Domain\Service\Service::class);
+        return $this->hasMany(\LogicPanel\Domain\Service\Service::class);
     }
 
     public function databases()
     {
-        return $this->hasMany(\LogicDock\Domain\Database\Database::class);
+        return $this->hasMany(\LogicPanel\Domain\Database\Database::class);
     }
 
     public function apiKeys()
     {
-        return $this->hasMany(\LogicDock\Domain\User\ApiKey::class);
+        return $this->hasMany(\LogicPanel\Domain\User\ApiKey::class);
     }
 
     public function owner()
@@ -61,7 +61,7 @@ class User extends Model
 
     public function domains()
     {
-        return $this->hasMany(\LogicDock\Domain\Domain\Domain::class);
+        return $this->hasMany(\LogicPanel\Domain\Domain\Domain::class);
     }
 
     public function verifyPassword(string $password): bool

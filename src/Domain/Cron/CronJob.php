@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Domain\Cron;
+namespace LogicPanel\Domain\Cron;
 
 use Illuminate\Database\Eloquent\Model;
-use LogicDock\Domain\Service\Service;
+use LogicPanel\Domain\Service\Service;
 
 class CronJob extends Model
 {

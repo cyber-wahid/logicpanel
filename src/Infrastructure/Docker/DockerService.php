@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LogicDock\Infrastructure\Docker;
+namespace LogicPanel\Infrastructure\Docker;
 
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
@@ -18,7 +18,7 @@ class DockerService
         $this->network = $config['network'];
         $this->userAppsPath = $config['user_apps_path'];
         // Docker Compose prepends project name to volume names
-        $this->userAppsVolume = $config['user_apps_volume'] ?? 'logicdock_logicdock_user_apps';
+        $this->userAppsVolume = $config['user_apps_volume'] ?? 'logicpanel_logicpanel_user_apps';
     }
 
     public function createContainer(
@@ -40,7 +40,7 @@ class DockerService
         bool $enableSsl = false,
         string $sslEmail = ''
     ): array {
-        $containerName = "logicdock_app_{$name}";
+        $containerName = "logicpanel_app_{$name}";
         $appPath = $this->userAppsPath . "/{$name}";
 
         // Create app directory with secure permissions
@@ -407,7 +407,7 @@ YAML;
      */
     private function reloadTraefik(): void
     {
-        $process = new Process(['docker', 'kill', '--signal=SIGHUP', 'logicdock_traefik']);
+        $process = new Process(['docker', 'kill', '--signal=SIGHUP', 'logicpanel_traefik']);
         $process->setTimeout(10);
         $process->run();
         // Ignore errors - Traefik will still pick up changes on next request or restart
@@ -439,7 +439,7 @@ YAML;
         if ($type === 'nodejs') {
             // Create package.json
             $packageJson = [
-                'name' => 'logicdock-app',
+                'name' => 'logicpanel-app',
                 'version' => '1.0.0',
                 'main' => 'server.js',
                 'scripts' => [
@@ -449,7 +449,7 @@ YAML;
             ];
             file_put_contents($appPath . '/package.json', json_encode($packageJson, JSON_PRETTY_PRINT));
 
-            // Create server.js with branded LogicDock design
+            // Create server.js with branded LogicPanel design
             $serverJs = <<<'JS'
 const http = require('http');
 const PORT = process.env.PORT || 3000;
@@ -463,7 +463,7 @@ const server = http.createServer((req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App Deployed - LogicDock</title>
+    <title>App Deployed - LogicPanel</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
@@ -511,11 +511,11 @@ const server = http.createServer((req, res) => {
         </div>
         <div class="steps">
             <div class="steps-title">Getting Started</div>
-            <div class="step"><span class="step-num">1</span> Open File Manager from your LogicDock dashboard</div>
+            <div class="step"><span class="step-num">1</span> Open File Manager from your LogicPanel dashboard</div>
             <div class="step"><span class="step-num">2</span> Edit or replace server.js with your application code</div>
             <div class="step"><span class="step-num">3</span> Restart the app from the panel to see your changes</div>
         </div>
-        <div class="brand">Powered by <a href="#">LogicDock</a></div>
+        <div class="brand">Powered by <a href="#">LogicPanel</a></div>
     </div>
 </body>
 </html>
@@ -545,7 +545,7 @@ def hello():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App Deployed - LogicDock</title>
+    <title>App Deployed - LogicPanel</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         *{{margin:0;padding:0;box-sizing:border-box}}
@@ -593,11 +593,11 @@ def hello():
         </div>
         <div class="steps">
             <div class="steps-title">Getting Started</div>
-            <div class="step"><span class="step-num">1</span> Open File Manager from your LogicDock dashboard</div>
+            <div class="step"><span class="step-num">1</span> Open File Manager from your LogicPanel dashboard</div>
             <div class="step"><span class="step-num">2</span> Edit or replace app.py with your application code</div>
             <div class="step"><span class="step-num">3</span> Restart the app from the panel to see your changes</div>
         </div>
-        <div class="brand">Powered by <a href="#">LogicDock</a></div>
+        <div class="brand">Powered by <a href="#">LogicPanel</a></div>
     </div>
 </body>
 </html>'''
@@ -832,7 +832,7 @@ PY;
 
     public function getAvailablePort($start = 3000, $end = 4000): int
     {
-        $logFile = sys_get_temp_dir() . '/logicdock_docker_debug.log';
+        $logFile = sys_get_temp_dir() . '/logicpanel_docker_debug.log';
 
         // Get all currently used ports by running containers
         // We need to check what ports are bound on the host
@@ -855,7 +855,7 @@ PY;
 
         // Also check database for assigned ports (more reliable)
         try {
-            $dbPorts = \LogicDock\Domain\Service\Service::pluck('port')->toArray();
+            $dbPorts = \LogicPanel\Domain\Service\Service::pluck('port')->toArray();
             $usedPorts = array_merge($usedPorts, array_map('intval', $dbPorts));
         } catch (\Exception $e) {
             file_put_contents($logFile, date('Y-m-d H:i:s') . " - getAvailablePort: DB check failed: " . $e->getMessage() . "\n", FILE_APPEND);
