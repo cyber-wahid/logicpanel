@@ -30,7 +30,7 @@ generate_random() { cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w "$1" | head 
 
 # --- 1. Root Check ---
 if [[ $EUID -ne 0 ]]; then
-   log_error "This script must be run as root. Try: sudo bash <(curl -sSL https://raw.githubusercontent.com/cyber-wahid/panel/main/install.sh)"
+   log_error "This script must be run as root. Try: sudo bash <(curl -sSL https://raw.githubusercontent.com/cyber-wahid/logicpanel/main/install.sh)"
    exit 1
 fi
 
@@ -651,7 +651,7 @@ cd $INSTALL_DIR
 
 # Fetch source code
 log_info "Fetching latest source code..."
-curl -sSL https://github.com/cyber-wahid/panel/archive/refs/heads/main.tar.gz | tar xz --strip-components=1
+curl -sSL https://github.com/cyber-wahid/logicpanel/archive/refs/heads/main.tar.gz | tar xz --strip-components=1
 
 # Create SSL management scripts
 log_info "Creating SSL management scripts..."

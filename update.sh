@@ -6,7 +6,7 @@
 
 set -e  # Exit on error
 
-REPO_URL="https://github.com/LogicPanel/logicpanel.git"
+REPO_URL="https://github.com/cyber-wahid/logicpanel.git"
 BRANCH="main"
 LOG_FILE="/var/www/html/storage/logs/update.log"
 BACKUP_DIR="/var/www/html/storage/backups"
@@ -75,7 +75,7 @@ else
     TEMP_DIR="/tmp/logicpanel_update_$TIMESTAMP"
     mkdir -p "$TEMP_DIR"
     
-    curl -L "https://github.com/LogicPanel/logicpanel/archive/refs/heads/$BRANCH.zip" \
+    curl -L "https://github.com/cyber-wahid/logicpanel/archive/refs/heads/$BRANCH.zip" \
         -o "$TEMP_DIR/latest.zip" 2>&1 | tee -a "$LOG_FILE"
     
     # Extract (excluding certain directories)
