@@ -152,7 +152,7 @@ check_docker() {
 check_docker
 
 # Check required ports
-REQUIRED_PORTS=(80 443 999 777 3306 5432 27017)
+REQUIRED_PORTS=(80 443 9999 7777 3306 5432 27017)
 for port in "${REQUIRED_PORTS[@]}"; do
     if ! check_port $port; then
         log_warn "Port $port is already in use. Installation may fail or conflict."
@@ -173,20 +173,20 @@ if command -v ufw &> /dev/null && ufw status | grep -q "Status: active"; then
     ufw allow 80/tcp comment "HTTP - Let's Encrypt" > /dev/null 2>&1
     ufw allow 443/tcp comment "HTTPS" > /dev/null 2>&1
     ufw allow 443/udp comment "HTTP/3 (QUIC)" > /dev/null 2>&1
-    ufw allow 777/tcp comment "LogicPanel User Panel" > /dev/null 2>&1
-    ufw allow 777/udp comment "HTTP/3 User Panel" > /dev/null 2>&1
-    ufw allow 999/tcp comment "LogicPanel Master Panel" > /dev/null 2>&1
-    ufw allow 999/udp comment "HTTP/3 Master Panel" > /dev/null 2>&1
+    ufw allow 7777/tcp comment "LogicPanel User Panel" > /dev/null 2>&1
+    ufw allow 7777/udp comment "HTTP/3 User Panel" > /dev/null 2>&1
+    ufw allow 9999/tcp comment "LogicPanel Master Panel" > /dev/null 2>&1
+    ufw allow 9999/udp comment "HTTP/3 Master Panel" > /dev/null 2>&1
     log_success "UFW rules configured with HTTP/3 support."
 elif command -v firewall-cmd &> /dev/null && systemctl is-active --quiet firewalld; then
     log_info "Detected firewalld. Configuring..."
     firewall-cmd --permanent --add-port=80/tcp > /dev/null 2>&1
     firewall-cmd --permanent --add-port=443/tcp > /dev/null 2>&1
     firewall-cmd --permanent --add-port=443/udp > /dev/null 2>&1
-    firewall-cmd --permanent --add-port=777/tcp > /dev/null 2>&1
-    firewall-cmd --permanent --add-port=777/udp > /dev/null 2>&1
-    firewall-cmd --permanent --add-port=999/tcp > /dev/null 2>&1
-    firewall-cmd --permanent --add-port=999/udp > /dev/null 2>&1
+    firewall-cmd --permanent --add-port=7777/tcp > /dev/null 2>&1
+    firewall-cmd --permanent --add-port=7777/udp > /dev/null 2>&1
+    firewall-cmd --permanent --add-port=9999/tcp > /dev/null 2>&1
+    firewall-cmd --permanent --add-port=9999/udp > /dev/null 2>&1
     firewall-cmd --reload > /dev/null 2>&1
     log_success "Firewalld rules configured with HTTP/3 support."
 elif command -v nft &> /dev/null && systemctl is-active --quiet nftables 2>/dev/null; then
@@ -194,10 +194,10 @@ elif command -v nft &> /dev/null && systemctl is-active --quiet nftables 2>/dev/
     # Add LogicPanel table if not exists
     nft add table inet logicpanel 2>/dev/null || true
     nft add chain inet logicpanel input '{ type filter hook input priority 0; policy accept; }' 2>/dev/null || true
-    for port in 80 443 777 999; do
+    for port in 80 443 7777 9999; do
         nft add rule inet logicpanel input tcp dport $port accept 2>/dev/null || true
     done
-    for port in 443 777 999; do
+    for port in 443 7777 9999; do
         nft add rule inet logicpanel input udp dport $port accept 2>/dev/null || true
     done
     # Persist rules
@@ -210,10 +210,10 @@ elif command -v iptables &> /dev/null; then
     iptables -A INPUT -p tcp --dport 80 -j ACCEPT > /dev/null 2>&1
     iptables -A INPUT -p tcp --dport 443 -j ACCEPT > /dev/null 2>&1
     iptables -A INPUT -p udp --dport 443 -j ACCEPT > /dev/null 2>&1
-    iptables -A INPUT -p tcp --dport 777 -j ACCEPT > /dev/null 2>&1
-    iptables -A INPUT -p udp --dport 777 -j ACCEPT > /dev/null 2>&1
-    iptables -A INPUT -p tcp --dport 999 -j ACCEPT > /dev/null 2>&1
-    iptables -A INPUT -p udp --dport 999 -j ACCEPT > /dev/null 2>&1
+    iptables -A INPUT -p tcp --dport 7777 -j ACCEPT > /dev/null 2>&1
+    iptables -A INPUT -p udp --dport 7777 -j ACCEPT > /dev/null 2>&1
+    iptables -A INPUT -p tcp --dport 9999 -j ACCEPT > /dev/null 2>&1
+    iptables -A INPUT -p udp --dport 9999 -j ACCEPT > /dev/null 2>&1
     
     # Save iptables rules (support multiple persistence methods)
     if command -v iptables-save &> /dev/null; then
@@ -227,8 +227,8 @@ elif command -v iptables &> /dev/null; then
 else
     log_warn "No firewall detected. Ports should be open by default."
     log_info "If you configure a firewall later, open these ports:"
-    log_info "  TCP: 80, 443, 777, 999"
-    log_info "  UDP: 443, 777, 999 (for HTTP/3)"
+    log_info "  TCP: 80, 443, 7777, 9999"
+    log_info "  UDP: 443, 7777, 9999 (for HTTP/3)"
 fi
 
 # Install Docker
@@ -427,8 +427,10 @@ else
         ARCH=$(uname -m)
         case "$ARCH" in
             x86_64) ARCH="x86_64" ;;
-            aarch64|arm64) ARCH="aarch64" ;;
-            *) ARCH="x86_64" ;;
+            *) 
+                 log_warn "Unsupported architecture for static build: $ARCH. Defaulting to x86_64 but it may fail."
+                 ARCH="x86_64" 
+                 ;;
         esac
         
         cd /tmp
@@ -485,7 +487,20 @@ fi
 # Install Git and other dependencies
 if ! command -v git &> /dev/null; then
     log_info "Installing Git..."
-    $PKG_INSTALL git
+    if command -v dnf &> /dev/null; then
+        dnf install -y git
+    elif command -v yum &> /dev/null; then
+        yum install -y git
+    elif command -v apt-get &> /dev/null; then
+        apt-get update && apt-get install -y git
+    elif command -v pacman &> /dev/null; then
+        pacman -Sy --noconfirm git
+    elif command -v zypper &> /dev/null; then
+        zypper install -y git
+    else
+        log_error "Could not install Git. Please install Git manually."
+        exit 1
+    fi
     log_success "Git installed."
 fi
 
@@ -505,9 +520,11 @@ else
     COMPOSE_VERSION="v2.24.5"
     ARCH=$(uname -m)
     case "$ARCH" in
-        aarch64|arm64) ARCH="aarch64" ;;
-        armv7l|armhf) ARCH="armv7" ;;
-        *) ARCH="x86_64" ;;
+        x86_64) ARCH="x86_64" ;;
+        *) 
+            log_error "Unsupported architecture: $ARCH. Only x86_64 is supported."
+            exit 1 
+            ;;
     esac
     curl -SL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${ARCH}" -o /usr/libexec/docker/cli-plugins/docker-compose
     chmod +x /usr/libexec/docker/cli-plugins/docker-compose
@@ -681,8 +698,8 @@ else
 fi
 
 DOMAIN=${PANEL_DOMAIN:-localhost}
-USER_PORT=${USER_PORT:-777}
-MASTER_PORT=${MASTER_PORT:-999}
+USER_PORT=${USER_PORT:-7777}
+MASTER_PORT=${MASTER_PORT:-9999}
 
 echo "Domain: $DOMAIN"
 echo "User Port: $USER_PORT"
@@ -885,8 +902,8 @@ echo "1. Wait 1-2 minutes for certificate generation"
 echo "2. Check status: ./check-ssl.sh"
 echo "3. View logs: docker compose logs -f traefik"
 echo "4. Access panel:"
-echo "   - User Panel: https://$DOMAIN:777"
-echo "   - Master Panel: https://$DOMAIN:999"
+echo "   - User Panel: https://$DOMAIN:7777"
+echo "   - Master Panel: https://$DOMAIN:9999"
 echo "   - DB Manager: https://db.$DOMAIN (If enabled)"
 echo ""
 EOFSETUPSSL
@@ -909,8 +926,8 @@ APP_URL=https://${PANEL_DOMAIN}
 PANEL_DOMAIN=${PANEL_DOMAIN}
 
 # Ports
-MASTER_PORT=999
-USER_PORT=777
+MASTER_PORT=9999
+USER_PORT=7777
 
 # Secrets
 JWT_SECRET=${JWT_SECRET}
@@ -964,8 +981,8 @@ mkdir -p config
 cat > config/settings.json << EOF
 {
     "hostname": "${PANEL_DOMAIN}",
-    "master_port": "999",
-    "user_port": "777",
+    "master_port": "9999",
+    "user_port": "7777",
     "company_name": "LogicPanel",
     "contact_email": "${ADMIN_EMAIL}",
     "enable_ssl": "1",
@@ -1197,7 +1214,7 @@ fi
 
 # Test 2: Check if ports are listening
 log_info "Checking port availability..."
-for port in 80 443 777 999; do
+for port in 80 443 7777 9999; do
     if ss -tuln | grep -q ":$port "; then
         log_success "Port $port is listening"
     else
@@ -1243,8 +1260,8 @@ Password: ${ADMIN_PASS}
 
 🌐 ACCESS URLS
 
-Master Panel (Admin):  https://${PANEL_DOMAIN}:999
-User Panel:            https://${PANEL_DOMAIN}:777
+Master Panel (Admin):  https://${PANEL_DOMAIN}:9999
+User Panel:            https://${PANEL_DOMAIN}:7777
 ${ADMINER_SUMMARY_LINE}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1297,7 +1314,7 @@ Certificate Renewal: Automatic (30 days before expiry)
 If SSL is not working immediately:
   1. Wait 2-3 minutes for certificate generation
   2. Ensure DNS points to this server
-  3. Check firewall allows ports 80, 443, 777, 999
+  3. Check firewall allows ports 80, 443, 7777, 9999
   4. Run: ./check-ssl.sh
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1343,8 +1360,8 @@ echo -e "${GREEN}║${NC}           ${CYAN}✨ INSTALLATION SUCCESSFUL! ✨${NC}
 echo -e "${GREEN}╠════════════════════════════════════════════════════════════════╣${NC}"
 echo -e "${GREEN}║${NC}                                                                ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}  ${YELLOW}🌐 PANEL ACCESS LINKS${NC}                                        ${GREEN}║${NC}"
-echo -e "${GREEN}║${NC}     Master Panel:  ${CYAN}https://${PANEL_DOMAIN}:999${NC}"
-echo -e "${GREEN}║${NC}     User Panel:    ${CYAN}https://${PANEL_DOMAIN}:777${NC}"
+echo -e "${GREEN}║${NC}     Master Panel:  ${CYAN}https://${PANEL_DOMAIN}:9999${NC}"
+echo -e "${GREEN}║${NC}     User Panel:    ${CYAN}https://${PANEL_DOMAIN}:7777${NC}"
 if [[ "$ENABLE_ADMINER" =~ ^[Yy]$ ]]; then
     echo -e "${GREEN}║${NC}     DB Manager:    ${CYAN}https://db.${PANEL_DOMAIN}${NC}"
 fi

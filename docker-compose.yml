@@ -27,10 +27,10 @@ services:
       - "80:80" # HTTP (Let's Encrypt challenge + redirect)
       - "443:443" # HTTPS (standard)
       - "443:443/udp" # HTTP/3 (QUIC) on port 443
-      - "777:777" # User Panel (HTTPS)
-      - "777:777/udp" # HTTP/3 (QUIC) on port 777
-      - "999:999" # Master Panel (HTTPS)
-      - "999:999/udp" # HTTP/3 (QUIC) on port 999
+      - "${USER_PORT:-7777}:777" # User Panel (HTTPS)
+      - "${USER_PORT:-7777}:777/udp" # HTTP/3 (QUIC) on port 777
+      - "${MASTER_PORT:-9999}:999" # Master Panel (HTTPS)
+      - "${MASTER_PORT:-9999}:999/udp" # HTTP/3 (QUIC) on port 999
       # - "8080:8080"  # Traefik Dashboard (dev only)
     volumes:
       - ./traefik.yml:/etc/traefik/traefik.yml:ro
@@ -140,8 +140,19 @@ services:
       # Enable Traefik for this service
       - "traefik.enable=true"
 
+      # Root Domain Redirect to User Panel (HTTP/HTTPS -> 7777)
+      - "traefik.http.middlewares.redirect-to-userpanel.redirectregex.regex=^https?://${PANEL_DOMAIN}/(.*)"
+      - "traefik.http.middlewares.redirect-to-userpanel.redirectregex.replacement=https://${PANEL_DOMAIN}:${USER_PORT}/$${1}"
+      
+      - "traefik.http.routers.root-redirect.rule=Host(`${PANEL_DOMAIN:-localhost}`)"
+      - "traefik.http.routers.root-redirect.entrypoints=web,websecure"
+      - "traefik.http.routers.root-redirect.middlewares=redirect-to-userpanel"
+      - "traefik.http.routers.root-redirect.tls=true"
+      - "traefik.http.routers.root-redirect.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.root-redirect.service=noop@internal"
+
       # User Panel Router (Port 777) - HTTPS with TLS
-      - "traefik.http.routers.userpanel.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.userpanel.rule=Host(`${PANEL_DOMAIN:-localhost}`)"
       - "traefik.http.routers.userpanel.entrypoints=userpanel"
       - "traefik.http.routers.userpanel.tls=true"
       - "traefik.http.routers.userpanel.tls.certresolver=letsencrypt"
@@ -150,7 +161,7 @@ services:
       - "traefik.http.routers.userpanel.middlewares=userpanel-headers@file"
 
       # Master Panel Router (Port 999) - HTTPS with TLS
-      - "traefik.http.routers.masterpanel.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.masterpanel.rule=Host(`${PANEL_DOMAIN:-localhost}`)"
       - "traefik.http.routers.masterpanel.entrypoints=masterpanel"
       - "traefik.http.routers.masterpanel.tls=true"
       - "traefik.http.routers.masterpanel.tls.certresolver=letsencrypt"
