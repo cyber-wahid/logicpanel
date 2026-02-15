@@ -11,7 +11,53 @@ try {
     // Ignore missing .env
 }
 
-// Port Detection for Session Isolation (Early Detection)
+// Global Error & Exception Handling
+error_reporting(E_ALL);
+ini_set('display_errors', ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? '1' : '0');
+
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() & $severity)) {
+        return;
+    }
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
+set_exception_handler(function ($e) {
+    // Log the error
+    error_log("Uncaught Exception: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\nStack trace:\n" . $e->getTraceAsString());
+
+    // If API request, return JSON
+    $isApi = strpos($_SERVER['REQUEST_URI'] ?? '', '/api') !== false || strpos($_SERVER['REQUEST_URI'] ?? '', '/public/api') !== false;
+    
+    if ($isApi) {
+        header('Content-Type: application/json');
+        http_response_code(500);
+        echo json_encode([
+            'error' => 'Internal Server Error',
+            'message' => ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? $e->getMessage() : 'An unexpected error occurred.'
+        ]);
+    } else {
+        // User-facing error page
+        http_response_code(500);
+        if (($_ENV['APP_DEBUG'] ?? 'false') === 'true') {
+            echo "<h1>Internal Server Error</h1>";
+            echo "<p><strong>Error:</strong> " . htmlspecialchars($e->getMessage()) . "</p>";
+            echo "<p><strong>File:</strong> " . htmlspecialchars($e->getFile()) . " (" . $e->getLine() . ")</p>";
+            echo "<pre>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
+        } else {
+            // Check if we have a custom error template
+            $errorTemplate = __DIR__ . '/templates/shared/errors/500.php';
+            if (file_exists($errorTemplate)) {
+                include $errorTemplate;
+            } else {
+                echo "<h1>500 Internal Server Error</h1>";
+                echo "<p>Something went wrong on our end. Please try again later.</p>";
+            }
+        }
+    }
+    exit;
+});
+
 // Traefik sends X-Forwarded-Port and X-Forwarded-Proto headers
 $tempServerPort = $_SERVER['SERVER_PORT'] ?? 0;
 $tempFwPort = $_SERVER['HTTP_X_FORWARDED_PORT'] ?? null;
