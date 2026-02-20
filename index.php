@@ -70,8 +70,8 @@ if (isset($_SERVER['HTTP_HOST'])) {
 }
 // Priority: X-Forwarded-Port (Traefik) > Host header port > Server port
 $tempEffectivePort = (int) ($tempFwPort ?: ($tempHostPort ?: $tempServerPort));
-$masterPort = (int) ($_ENV['MASTER_PORT'] ?? 999);
-$userPort = (int) ($_ENV['USER_PORT'] ?? 777);
+$masterPort = (int) ($_ENV['MASTER_PORT'] ?? 9999);
+$userPort = (int) ($_ENV['USER_PORT'] ?? 7777);
 
 // Detect if HTTPS (Traefik sets X-Forwarded-Proto)
 $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
@@ -206,7 +206,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
 $effectivePort = $hostPort ?: ($fwPort ?: $serverPort);
 
 // If Port matches MASTER_PORT, load Master Panel Frontend
-$masterPort = (int) ($_ENV['MASTER_PORT'] ?? 999);
+$masterPort = (int) ($_ENV['MASTER_PORT'] ?? 9999);
 if (
     ((int) $effectivePort === $masterPort || getenv('APP_MODE') === 'master' || strpos((string) $serverPort, (string) 
         $masterPort) !== false)

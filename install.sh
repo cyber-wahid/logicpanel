@@ -94,16 +94,20 @@ countdown_progress() {
     local seconds=$1
     local message=$2
     local width=40
+    # Ensure terminal can handle \r and disable cursor for cleaner animation
+    tput civis 2>/dev/null || true
     for ((i=0; i<=seconds; i++)); do
         local pct=$((i * 100 / seconds))
         local filled=$((i * width / seconds))
         local empty=$((width - filled))
         local bar=$(printf "%${filled}s" | tr ' ' '#')$(printf "%${empty}s" | tr ' ' '-')
         local remaining=$((seconds - i))
-        printf "\r  ${CYAN}[${bar}]${NC} ${pct}%% - ${message} (${remaining}s remaining)  "
+        # Use printf with explicit format and ensure it flushes
+        printf "\r  ${CYAN}[%s]${NC} %d%% - %s (%ds remaining)  " "$bar" "$pct" "$message" "$remaining"
         sleep 1
     done
-    printf "\r  ${GREEN}[$(printf "%${width}s" | tr ' ' '#')]${NC} 100%% - ${message}                                \n"
+    tput cnorm 2>/dev/null || true
+    printf "\r  ${GREEN}[%s]${NC} 100%% - %s                                \n" "$(printf "%${width}s" | tr ' ' '#')" "$message"
 }
 
 # Spinner for background processes (using \r for modern terminal compatibility)
@@ -1395,7 +1399,9 @@ if [ -f "create_admin.php" ]; then
     DB_READY=false
     
     while [ $COUNT -lt $MAX_RETRIES ]; do
-        if docker exec -T logicpanel_app php -r "try { new PDO('mysql:host=logicpanel-db;dbname='.getenv('DB_DATABASE'), getenv('DB_USERNAME'), getenv('DB_PASSWORD')); echo 'connected'; } catch(Exception \$e) { exit(1); }" >/dev/null 2>&1; then
+        # Passing variables explicitly to docker exec ensures they are available to php -r
+        # We use DB_HOST_MAIN which is the randomized hostname for the main DB container
+        if docker exec -T -e DB_DATABASE="${DB_NAME}" -e DB_USERNAME="${DB_USER}" -e DB_PASSWORD="${DB_PASS}" -e DB_HOST="${DB_HOST_MAIN}" logicpanel_app php -r "try { \$pdo = new PDO('mysql:host='.getenv('DB_HOST').';dbname='.getenv('DB_DATABASE'), getenv('DB_USERNAME'), getenv('DB_PASSWORD'), [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 5]); echo 'connected'; } catch(Exception \$e) { exit(1); }" >/dev/null 2>&1; then
             DB_READY=true
             break
         fi
@@ -1406,7 +1412,8 @@ if [ -f "create_admin.php" ]; then
     echo ""
 
     if [ "$DB_READY" = true ]; then
-        log_success "Database is ready."
+        log_success "Database is ready and accessible."
+        log_info "Creating administrator account..."
         
         log_info "Running database migrations..."
         docker compose exec -T app bash /var/www/html/docker/migrate.sh || log_warn "Migration warning (non-fatal)"
