@@ -247,13 +247,12 @@ services:
           memory: 1G
 
   # MongoDB - Mother Container
-  # MongoDB - Mother Container
   mongo:
     image: mongo:7.0
     container_name: ${DB_HOST_MONGO:-lp_mongo_mother}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:27017:27017" # Changed to localhost only for security
+      - "0.0.0.0:27017:27017" # Exposed to all interfaces for external connections
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}

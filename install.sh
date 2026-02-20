@@ -896,7 +896,7 @@ done
 
 
 # Random Secrets for Security
-DB_NAME="lp_db_$(generate_random 8)"
+DB_NAME="logicpanel"
 DB_USER="lp_user_$(generate_random 8)"
 DB_PASS=$(generate_random 32)
 ROOT_PASS=$(generate_random 32)
@@ -904,19 +904,20 @@ JWT_SECRET=$(generate_random 64)
 ENC_KEY=$(head -c 32 /dev/urandom | base64 -w 0)
 DB_PROVISIONER_SECRET=$(generate_random 64)
 
-# Random Hostnames & Network for Security/Isolation
-# This prevents conflicts if multiple panels run on the same network (though unlikely)
-# and obscures the internal topology.
+# Randomized Hostnames for Security (Open Source Protection)
+# Since this is open source, randomizing internal names adds security through obscurity
 RAND_SUFFIX=$(generate_random 6 | tr '[:upper:]' '[:lower:]')
 DOCKER_NETWORK="lp_net_${RAND_SUFFIX}"
 DB_HOST_MAIN="lp_db_main_${RAND_SUFFIX}"
-DB_HOST_MYSQL="lp_db_mysql_${RAND_SUFFIX}"
-DB_HOST_PG="lp_db_pg_${RAND_SUFFIX}"
-DB_HOST_MONGO="lp_db_mongo_${RAND_SUFFIX}"
+DB_HOST_MYSQL="lp_mysql_${RAND_SUFFIX}"
+DB_HOST_PG="lp_pg_${RAND_SUFFIX}"
+DB_HOST_MONGO="lp_mongo_${RAND_SUFFIX}"
 
 log_info "Generated Environment:"
 log_info "  Network: $DOCKER_NETWORK"
-log_info "  DB Configuration: $DB_HOST_MAIN (MySQL)"
+log_info "  DB Configuration: $DB_HOST_MAIN (MariaDB)"
+log_info "  Database Name: $DB_NAME"
+log_info "  Security: Randomized internal hostnames"
 
 # Create the Docker network now (before docker-compose needs it)
 log_info "Creating Docker Network: $DOCKER_NETWORK"
@@ -1370,15 +1371,15 @@ countdown_progress 60 "Services warming up"
 # Verify containers are running
 log_info "Verifying container status..."
 
-# Check for containers using patterns (since some have randomized names)
+# Check for containers using the actual names from our environment
 CONTAINER_PATTERNS=(
     "logicpanel_app:LogicPanel Application"
     "${DB_HOST_MAIN}:LogicPanel Database"
     "logicpanel_gateway:Terminal Gateway"
     "logicpanel_traefik:Traefik Proxy"
-    "${DB_HOST_MYSQL}:MySQL Database"
-    "${DB_HOST_PG}:PostgreSQL Database"
-    "${DB_HOST_MONGO}:MongoDB Database"
+    "${DB_HOST_MYSQL}:MySQL Mother Container"
+    "${DB_HOST_PG}:PostgreSQL Mother Container"
+    "${DB_HOST_MONGO}:MongoDB Mother Container"
     "logicpanel_redis:Redis Cache"
     "logicpanel_db_provisioner:DB Provisioner"
 )
@@ -1418,8 +1419,8 @@ if [ -f "create_admin.php" ]; then
     # Wait for Database to be ready - use docker-compose healthcheck
     log_info "Waiting for Database to initialize (this may take 30-60 seconds)..."
     
-    # Get the actual database container name from environment
-    ACTUAL_DB_CONTAINER=$(docker exec logicpanel_app printenv DB_HOST 2>/dev/null || echo "logicpanel-db")
+    # Use the DB_HOST_MAIN variable we set earlier (randomized name)
+    ACTUAL_DB_CONTAINER="${DB_HOST_MAIN}"
     
     log_info "Database container: ${ACTUAL_DB_CONTAINER}"
     

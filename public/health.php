@@ -21,7 +21,7 @@ try {
         require_once __DIR__ . '/../vendor/autoload.php';
 
         // Use environment variables with defaults, ensuring they're properly sanitized
-        $host = $_ENV['DB_HOST'] ?? 'logicpanel-db';
+        $host = $_ENV['DB_HOST'] ?? 'localhost';
         $db = $_ENV['DB_DATABASE'] ?? 'logicpanel';
         $user = $_ENV['DB_USERNAME'] ?? 'logicpanel';
         $pass = $_ENV['DB_PASSWORD'] ?? '';

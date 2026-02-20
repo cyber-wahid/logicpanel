@@ -14,7 +14,7 @@ return [
         'host' => (function () {
             $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
             // If in non-docker environment and host is docker hostname, fallback to localhost
-            if ($host === 'logicpanel-db' && strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            if (in_array($host, ['logicpanel-db', 'localhost']) && strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
                 return '127.0.0.1';
             }
             return $host;

@@ -36,7 +36,7 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 use LogicPanel\Domain\User\User;
 
 try {
-    $db_host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: 'logicpanel-db';
+    $db_host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: 'localhost';
     $db_port = $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?: '3306';
     $db_name = $_ENV['DB_DATABASE'] ?? getenv('DB_DATABASE') ?: 'logicpanel';
     $db_user = $_ENV['DB_USERNAME'] ?? getenv('DB_USERNAME') ?: 'logicpanel';
