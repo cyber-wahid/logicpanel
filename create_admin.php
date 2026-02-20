@@ -31,35 +31,54 @@ if (!$username || !$email || !$password) {
     exit(1);
 }
 
-// Boot Eloquent
+// Boot Eloquent with connection retry
 use Illuminate\Database\Capsule\Manager as Capsule;
 use LogicPanel\Domain\User\User;
 
-try {
-    $db_host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: 'localhost';
-    $db_port = $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?: '3306';
-    $db_name = $_ENV['DB_DATABASE'] ?? getenv('DB_DATABASE') ?: 'logicpanel';
-    $db_user = $_ENV['DB_USERNAME'] ?? getenv('DB_USERNAME') ?: 'logicpanel';
-    $db_pass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?: '';
+$db_host = getenv('DB_HOST') ?: ($_ENV['DB_HOST'] ?? 'logicpanel-db');
+$db_port = getenv('DB_PORT') ?: ($_ENV['DB_PORT'] ?? '3306');
+$db_name = getenv('DB_DATABASE') ?: ($_ENV['DB_DATABASE'] ?? 'logicpanel');
+$db_user = getenv('DB_USERNAME') ?: ($_ENV['DB_USERNAME'] ?? 'logicpanel');
+$db_pass = getenv('DB_PASSWORD') ?: ($_ENV['DB_PASSWORD'] ?? '');
 
-    echo "Connecting to database: {$db_host}:{$db_port}, DB: {$db_name}, User: {$db_user}\n";
+echo "Connecting to database at {$db_host}:{$db_port}/{$db_name}...\n";
 
-    $capsule = new Capsule;
-    $capsule->addConnection([
-        'driver'    => 'mysql',
-        'host'      => $db_host,
-        'port'      => $db_port,
-        'database'  => $db_name,
-        'username'  => $db_user,
-        'password'  => $db_pass,
-        'charset'   => 'utf8mb4',
-        'collation' => 'utf8mb4_unicode_ci',
-        'prefix'    => '',
-    ]);
-    $capsule->setAsGlobal();
-    $capsule->bootEloquent();
-} catch (\Exception $e) {
-    echo "Error: Database connection failed: " . $e->getMessage() . "\n";
+$maxRetries = 5;
+$connected = false;
+
+for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+    try {
+        $capsule = new Capsule;
+        $capsule->addConnection([
+            'driver'    => 'mysql',
+            'host'      => $db_host,
+            'port'      => $db_port,
+            'database'  => $db_name,
+            'username'  => $db_user,
+            'password'  => $db_pass,
+            'charset'   => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix'    => '',
+        ]);
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+        
+        // Test the connection by running a simple query
+        Capsule::select('SELECT 1');
+        $connected = true;
+        echo "Database connection successful.\n";
+        break;
+    } catch (\Exception $e) {
+        echo "Connection attempt {$attempt}/{$maxRetries} failed: " . $e->getMessage() . "\n";
+        if ($attempt < $maxRetries) {
+            echo "Retrying in 5 seconds...\n";
+            sleep(5);
+        }
+    }
+}
+
+if (!$connected) {
+    echo "Error: Database connection failed after {$maxRetries} attempts.\n";
     exit(1);
 }
 

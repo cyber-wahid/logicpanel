@@ -94,20 +94,16 @@ countdown_progress() {
     local seconds=$1
     local message=$2
     local width=40
-    # Ensure terminal can handle \r and disable cursor for cleaner animation
-    tput civis 2>/dev/null || true
     for ((i=0; i<=seconds; i++)); do
         local pct=$((i * 100 / seconds))
         local filled=$((i * width / seconds))
         local empty=$((width - filled))
         local bar=$(printf "%${filled}s" | tr ' ' '#')$(printf "%${empty}s" | tr ' ' '-')
         local remaining=$((seconds - i))
-        # Use printf with explicit format and ensure it flushes
-        printf "\r  ${CYAN}[%s]${NC} %d%% - %s (%ds remaining)  " "$bar" "$pct" "$message" "$remaining"
+        printf "\r  ${CYAN}[${bar}]${NC} ${pct}%% - ${message} (${remaining}s remaining)  "
         sleep 1
     done
-    tput cnorm 2>/dev/null || true
-    printf "\r  ${GREEN}[%s]${NC} 100%% - %s                                \n" "$(printf "%${width}s" | tr ' ' '#')" "$message"
+    printf "\r  ${GREEN}[$(printf "%${width}s" | tr ' ' '#')]${NC} 100%% - ${message}                                \n"
 }
 
 # Spinner for background processes (using \r for modern terminal compatibility)
@@ -151,55 +147,56 @@ check_port() {
     local force_kill=$2
     
     # 1. Check if ANY container is holding the port (not just logicpanel_)
-    local conflicting_container=$(docker ps --format '{{.Names}}' --filter "publish=$port" 2>/dev/null | head -n 1)
+    local conflicting_container=$(docker ps --format '{{.Names}}' --filter "publish=$port" | head -n 1)
     if [ ! -z "$conflicting_container" ]; then
         log_warn "Port $port is held by container: $conflicting_container"
         if [[ "$conflicting_container" == logicpanel_* ]] || [[ "$conflicting_container" == lp_* ]]; then
             log_info "Auto-removing LogicPanel container..."
             docker rm -f "$conflicting_container" >/dev/null 2>&1
-            sleep 2
+            sleep 1
         else
             if [ "$force_kill" != "force" ]; then
                 read -p "--- Port $port is held by '$conflicting_container'. Remove it? (y/n): " REM_CONT < /dev/tty
                 if [[ "$REM_CONT" =~ ^[Yy]$ ]]; then
                     docker rm -f "$conflicting_container" >/dev/null 2>&1
-                    sleep 2
+                    sleep 1
                 fi
             else
-                log_info "Force removing container on port $port..."
                 docker rm -f "$conflicting_container" >/dev/null 2>&1
-                sleep 2
             fi
         fi
     fi
 
     # 2. General check if port is still busy (non-container processes)
     if command -v lsof &> /dev/null; then
-        local pids=$($SUDO lsof -i :$port -sTCP:LISTEN -t 2>/dev/null)
-        if [ ! -z "$pids" ]; then
+        if $SUDO lsof -i :$port -sTCP:LISTEN -t >/dev/null; then
              if [ "$force_kill" = "force" ]; then
-                 log_warn "Force killing processes on port $port: $pids"
-                 echo "$pids" | xargs -r $SUDO kill -9 2>/dev/null || true
-                 sleep 2
-                 return 1
+                 # Try to kill explicitly
+                 local pid=$($SUDO lsof -i :$port -sTCP:LISTEN -t | head -1)
+                 if [ ! -z "$pid" ]; then
+                     log_warn "Force killing PID $pid on port $port..."
+                     $SUDO kill -9 $pid >/dev/null 2>&1 || true
+                     sleep 1
+                 fi
+                 return 1 # Return fail so caller knows we had to kill
             else
                  return 1
             fi
         fi
     elif command -v ss &> /dev/null; then
-        if ss -tuln 2>/dev/null | grep -qE ":$port\s"; then
+        if ss -tuln | grep -E ":$port\s"; then
             if [ "$force_kill" = "force" ]; then
                  $SUDO fuser -k -n tcp $port >/dev/null 2>&1 || true
-                 sleep 2
+                 sleep 1
             else
                  return 1
             fi
         fi
     elif command -v netstat &> /dev/null; then
-        if netstat -tuln 2>/dev/null | grep -qE ":$port\s"; then
+        if netstat -tuln | grep -E ":$port\s"; then
             if [ "$force_kill" = "force" ]; then
                  $SUDO fuser -k -n tcp $port >/dev/null 2>&1 || true
-                 sleep 2
+                 sleep 1
             else
                  return 1
             fi
@@ -209,10 +206,10 @@ check_port() {
     # 3. Explicit check for docker-proxy if port is 9999 or 80/443
     if [ "$force_kill" = "force" ]; then
          # This is the "Nuclear" part for zombie proxies
-         if pgrep -f "docker-proxy.*$port" > /dev/null 2>&1; then
+         if pgrep -f "docker-proxy.*$port" > /dev/null; then
              log_warn "Found specific docker-proxy for port $port. Killing it..."
-             $SUDO pkill -9 -f "docker-proxy.*$port" 2>/dev/null || true
-             sleep 2
+             $SUDO pkill -f "docker-proxy.*$port" || true
+             sleep 1
          fi
     fi
 
@@ -302,32 +299,16 @@ check_docker
 # Check required ports
 manage_selinux
 REQUIRED_PORTS=(80 443 9999 7777 3306 5432 27017)
-log_info "Checking required ports: ${REQUIRED_PORTS[*]}"
 for port in "${REQUIRED_PORTS[@]}"; do
     if ! check_port $port; then
-        log_warn "Port $port is busy. Attempting to free it..."
+        log_warn "Port $port is held by a non-container process."
         $SUDO fuser -k -n tcp $port 2>/dev/null || true
-        sleep 2
-        
-        # Force kill if still busy
-        check_port $port "force"
         sleep 1
-        
-        # Final verification
         if ! check_port $port; then
-            log_error "Could not clear port $port after multiple attempts."
-            log_error "Please manually stop the process using this port:"
-            if command -v lsof &> /dev/null; then
-                $SUDO lsof -i :$port
-            elif command -v ss &> /dev/null; then
-                ss -tulnp | grep ":$port"
-            fi
-            log_error "Then restart the installer."
+            log_error "Could not clear port $port. Please free it manually and restart."
             exit 1
         fi
         log_success "Port $port cleared."
-    else
-        log_success "Port $port is available."
     fi
 done
 
@@ -896,7 +877,7 @@ done
 
 
 # Random Secrets for Security
-DB_NAME="logicpanel"
+DB_NAME="lp_db_$(generate_random 8)"
 DB_USER="lp_user_$(generate_random 8)"
 DB_PASS=$(generate_random 32)
 ROOT_PASS=$(generate_random 32)
@@ -904,20 +885,19 @@ JWT_SECRET=$(generate_random 64)
 ENC_KEY=$(head -c 32 /dev/urandom | base64 -w 0)
 DB_PROVISIONER_SECRET=$(generate_random 64)
 
-# Randomized Hostnames for Security (Open Source Protection)
-# Since this is open source, randomizing internal names adds security through obscurity
+# Random Hostnames & Network for Security/Isolation
+# This prevents conflicts if multiple panels run on the same network (though unlikely)
+# and obscures the internal topology.
 RAND_SUFFIX=$(generate_random 6 | tr '[:upper:]' '[:lower:]')
 DOCKER_NETWORK="lp_net_${RAND_SUFFIX}"
 DB_HOST_MAIN="lp_db_main_${RAND_SUFFIX}"
-DB_HOST_MYSQL="lp_mysql_${RAND_SUFFIX}"
-DB_HOST_PG="lp_pg_${RAND_SUFFIX}"
-DB_HOST_MONGO="lp_mongo_${RAND_SUFFIX}"
+DB_HOST_MYSQL="lp_db_mysql_${RAND_SUFFIX}"
+DB_HOST_PG="lp_db_pg_${RAND_SUFFIX}"
+DB_HOST_MONGO="lp_db_mongo_${RAND_SUFFIX}"
 
 log_info "Generated Environment:"
 log_info "  Network: $DOCKER_NETWORK"
-log_info "  DB Configuration: $DB_HOST_MAIN (MariaDB)"
-log_info "  Database Name: $DB_NAME"
-log_info "  Security: Randomized internal hostnames"
+log_info "  DB Configuration: $DB_HOST_MAIN (MySQL)"
 
 # Create the Docker network now (before docker-compose needs it)
 log_info "Creating Docker Network: $DOCKER_NETWORK"
@@ -1302,19 +1282,11 @@ docker ps -a --format '{{.Names}}' | grep -E "^(logicpanel_|lp_)" | xargs -r doc
 log_info "Pre-deployment Port Check..."
 NEEDS_DOCKER_RESTART=false
 for port in 80 443 9999 7777; do
-    log_info "Checking port $port..."
-    if ! check_port $port; then
-        log_warn "Port $port is busy, forcing cleanup..."
-        check_port $port "force"
-        sleep 2
-    fi
-    
+    check_port $port "force"
     # Double check if it's REALLY gone
     if ! check_port $port; then
          log_warn "Port $port is persistent. Scheduling Docker restart."
          NEEDS_DOCKER_RESTART=true
-    else
-        log_success "Port $port is clear."
     fi
 done
 
@@ -1371,15 +1343,15 @@ countdown_progress 60 "Services warming up"
 # Verify containers are running
 log_info "Verifying container status..."
 
-# Check for containers using the actual names from our environment
+# Check for containers using patterns (since some have randomized names)
 CONTAINER_PATTERNS=(
     "logicpanel_app:LogicPanel Application"
     "${DB_HOST_MAIN}:LogicPanel Database"
     "logicpanel_gateway:Terminal Gateway"
     "logicpanel_traefik:Traefik Proxy"
-    "${DB_HOST_MYSQL}:MySQL Mother Container"
-    "${DB_HOST_PG}:PostgreSQL Mother Container"
-    "${DB_HOST_MONGO}:MongoDB Mother Container"
+    "${DB_HOST_MYSQL}:MySQL Database"
+    "${DB_HOST_PG}:PostgreSQL Database"
+    "${DB_HOST_MONGO}:MongoDB Database"
     "logicpanel_redis:Redis Cache"
     "logicpanel_db_provisioner:DB Provisioner"
 )
@@ -1411,149 +1383,106 @@ if [ "$ALL_RUNNING" = false ]; then
 fi
 
 # Create admin user
-log_info "Setting up admin creation script..."
+log_info "Step 5: Creating Administrator Account..."
 if [ -f "create_admin.php" ]; then
-    docker exec logicpanel_app mkdir -p /var/www/html/database 2>/dev/null || true
-    docker cp config/settings.json logicpanel_app:/var/www/html/config/settings.json 2>/dev/null || true
 
-    # Wait for Database to be ready - use docker-compose healthcheck
-    log_info "Waiting for Database to initialize (this may take 30-60 seconds)..."
-    
-    # Use the DB_HOST_MAIN variable we set earlier (randomized name)
-    ACTUAL_DB_CONTAINER="${DB_HOST_MAIN}"
-    
-    log_info "Database container: ${ACTUAL_DB_CONTAINER}"
-    
-    MAX_RETRIES=60
-    COUNT=0
-    DB_HEALTHY=false
-    
-    # Wait for database container to be healthy (docker-compose healthcheck)
-    log_info "Waiting for database healthcheck to pass..."
-    while [ $COUNT -lt $MAX_RETRIES ]; do
-        HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' ${ACTUAL_DB_CONTAINER} 2>/dev/null || echo "none")
-        
-        if [ "$HEALTH_STATUS" = "healthy" ]; then
-            DB_HEALTHY=true
-            log_success "Database container is healthy!"
-            break
-        elif [ "$HEALTH_STATUS" = "none" ]; then
-            # No healthcheck defined, fallback to connection test
-            log_warn "No healthcheck found, using connection test..."
+    # --- Phase 1: Wait for App Container to be fully application-ready ---
+    # The entrypoint.sh runs composer install (2-5 min) + migrations before Apache starts.
+    # We must wait for the health endpoint to respond, meaning everything is ready.
+    log_info "Waiting for application container to be fully ready..."
+    log_info "  (entrypoint runs composer install + migrations — this may take 3-5 minutes on first install)"
+    MAX_APP_RETRIES=60
+    APP_READY=false
+    APP_COUNT=0
+
+    while [ $APP_COUNT -lt $MAX_APP_RETRIES ]; do
+        # Check if the health endpoint responds (means Apache is up, composer done, entrypoint finished)
+        if docker exec -T logicpanel_app curl -sf http://localhost/public/health.php >/dev/null 2>&1; then
+            APP_READY=true
             break
         fi
-        
-        if [ $((COUNT % 5)) -eq 0 ]; then
-            log_info "Database status: $HEALTH_STATUS (waiting...)"
+        # Fallback: also try wget in case curl isn't available
+        if docker exec -T logicpanel_app wget -qO- http://localhost/public/health.php >/dev/null 2>&1; then
+            APP_READY=true
+            break
         fi
-        
         echo -n "."
-        sleep 2
-        COUNT=$((COUNT+1))
+        sleep 10
+        APP_COUNT=$((APP_COUNT+1))
     done
     echo ""
-    
-    # Now test actual database connection
-    log_info "Testing database connection..."
-    COUNT=0
-    DB_READY=false
-    
-    while [ $COUNT -lt 30 ]; do
-        # Test connection using the container's environment variables
-        DB_TEST_OUTPUT=$(docker exec logicpanel_app php -r "
-        try {
-            \$host = getenv('DB_HOST');
-            \$db = getenv('DB_DATABASE');
-            \$user = getenv('DB_USERNAME');
-            \$pass = getenv('DB_PASSWORD');
-            
-            if (empty(\$host) || empty(\$db) || empty(\$user)) {
-                echo 'ERROR: Missing environment variables';
+
+    if [ "$APP_READY" = true ]; then
+        log_success "Application container is ready."
+    else
+        log_warn "Application health check timed out (waited $((MAX_APP_RETRIES * 10))s)."
+        log_warn "The entrypoint may still be running. Proceeding with admin creation anyway..."
+    fi
+
+    # --- Phase 2: Verify Database Schema is Ready (users table exists) ---
+    log_info "Verifying database schema (checking for users table)..."
+    SCHEMA_RETRIES=18
+    SCHEMA_READY=false
+    SCOUNT=0
+
+    while [ $SCOUNT -lt $SCHEMA_RETRIES ]; do
+        if docker exec -T logicpanel_app php -r "
+            try {
+                \$host = getenv('DB_HOST') ?: 'logicpanel-db';
+                \$db   = getenv('DB_DATABASE') ?: 'logicpanel';
+                \$user = getenv('DB_USERNAME') ?: 'logicpanel';
+                \$pass = getenv('DB_PASSWORD') ?: '';
+                \$pdo  = new PDO(\"mysql:host=\$host;dbname=\$db\", \$user, \$pass);
+                \$stmt = \$pdo->query(\"SHOW TABLES LIKE 'users'\");
+                if (\$stmt->rowCount() > 0) { echo 'ready'; exit(0); }
                 exit(1);
-            }
-            
-            \$pdo = new PDO(
-                \"mysql:host=\$host;dbname=\$db\",
-                \$user,
-                \$pass,
-                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 10]
-            );
-            echo 'connected';
-            exit(0);
-        } catch(PDOException \$e) {
-            echo 'PDO_ERROR: ' . \$e->getMessage();
-            exit(1);
-        }" 2>&1)
-        
-        if echo "$DB_TEST_OUTPUT" | grep -q "connected"; then
-            DB_READY=true
-            log_success "Database connection successful!"
+            } catch(Exception \$e) { exit(1); }
+        " 2>/dev/null | grep -q "ready"; then
+            SCHEMA_READY=true
             break
-        elif [ $COUNT -eq 10 ] || [ $COUNT -eq 20 ]; then
-            # Show error periodically
-            log_warn "Still connecting... ($DB_TEST_OUTPUT)"
         fi
-        
         echo -n "."
-        sleep 3
-        COUNT=$((COUNT+1))
+        sleep 10
+        SCOUNT=$((SCOUNT+1))
     done
     echo ""
 
-    if [ "$DB_READY" = true ]; then
-        log_success "Database is ready and accessible."
-        
-        log_info "Running database migrations..."
-        if docker exec logicpanel_app bash /var/www/html/docker/migrate.sh 2>&1; then
-            log_success "Database migrations completed successfully!"
-        else
-            log_error "Database migrations failed!"
-            log_warn "Check migration logs above for details"
-            log_warn "You may need to run migrations manually:"
-            log_warn "  docker exec logicpanel_app bash /var/www/html/docker/migrate.sh"
-        fi
+    if [ "$SCHEMA_READY" = true ]; then
+        log_success "Database schema is ready (users table exists)."
 
-        log_info "Creating master panel administrator account..."
-        log_info "This account will be used to access the Master Panel (port 9999)"
-        
-        # Store password securely before passing to container
-        ADMIN_PASS_SAFE="${ADMIN_PASS}"
-        
-        # Create admin with verbose output
-        if docker exec logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS_SAFE}" 2>&1; then
-            log_success "Master Panel administrator account created successfully!"
-            log_success "Login at: https://${PANEL_DOMAIN}:9999"
-        else
-            log_error "Admin creation script failed! Attempting alternative method..."
-            
-            # Alternative: Try with environment variables
-            if docker exec -e ADMIN_USER="${ADMIN_USER}" -e ADMIN_EMAIL="${ADMIN_EMAIL}" -e ADMIN_PASS="${ADMIN_PASS_SAFE}" logicpanel_app php /var/www/html/create_admin.php 2>&1; then
-                log_success "Administrator account created via environment variables!"
+        # --- Phase 3: Create Admin Account (with retry) ---
+        log_info "Creating administrator account..."
+        ADMIN_CREATED=false
+
+        for attempt in 1 2 3; do
+            if docker exec -T logicpanel_app php /var/www/html/create_admin.php \
+                --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}" 2>&1; then
+                ADMIN_CREATED=true
+                break
             else
-                log_error "Both admin creation methods failed!"
-                log_warn "Manual creation command:"
-                log_warn "  cd ${INSTALL_DIR}"
-                log_warn "  docker exec -it logicpanel_app php /var/www/html/create_admin.php \\"
-                log_warn "    --user=\"${ADMIN_USER}\" --email=\"${ADMIN_EMAIL}\" --pass=\"YOUR_PASSWORD\""
+                log_warn "  Attempt $attempt failed. Retrying in 5 seconds..."
+                sleep 5
             fi
+        done
+
+        if [ "$ADMIN_CREATED" = true ]; then
+            log_success "Administrator account created successfully!"
+        else
+            log_warn "Admin creation failed after 3 attempts."
+            log_warn "You can create admin manually after installation:"
+            log_warn "  docker exec -T logicpanel_app php /var/www/html/create_admin.php \\"
+            log_warn "    --user=\"${ADMIN_USER}\" --email=\"${ADMIN_EMAIL}\" --pass=\"YOUR_PASSWORD\""
         fi
     else
-        log_error "Database failed to initialize within expected time."
-        log_warn "Troubleshooting steps:"
-        log_warn "  1. Check database container logs:"
-        log_warn "     docker compose logs logicpanel-db"
-        log_warn "  2. Check app container logs:"
-        log_warn "     docker compose logs app"
-        log_warn "  3. Verify database container is running:"
-        log_warn "     docker ps | grep logicpanel"
-        log_warn "  4. Check database health:"
-        log_warn "     docker inspect --format='{{.State.Health.Status}}' logicpanel-db"
-        log_warn ""
-        log_warn "After fixing database issues, run migrations and create admin:"
-        log_warn "  docker exec logicpanel_app bash /var/www/html/docker/migrate.sh"
-        log_warn "  docker exec -it logicpanel_app php /var/www/html/create_admin.php \\"
+        log_error "Database schema not ready (users table not found after $((SCHEMA_RETRIES * 10))s)."
+        log_warn "The entrypoint may still be running migrations. Please wait and create admin manually:"
+        log_warn "  docker exec -T logicpanel_app php /var/www/html/create_admin.php \\"
         log_warn "    --user=\"${ADMIN_USER}\" --email=\"${ADMIN_EMAIL}\" --pass=\"YOUR_PASSWORD\""
     fi
+
+    # NOTE: We intentionally do NOT delete create_admin.php here.
+    # This allows manual retry if automatic creation failed.
+    # The file is safe since it requires CLI arguments and runs from container only.
 else
     log_warn "create_admin.php not found. Please create admin manually after installation."
 fi

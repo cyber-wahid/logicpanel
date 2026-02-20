@@ -18,7 +18,7 @@ use LogicPanel\Domain\Service\Service;
 $capsule = new Capsule;
 $capsule->addConnection([
     'driver' => 'mysql',
-    'host' => getenv('DB_HOST') ?: 'localhost',
+    'host' => getenv('DB_HOST') ?: 'logicpanel-db',
     'database' => getenv('DB_DATABASE') ?: 'logicpanel',
     'username' => getenv('DB_USERNAME') ?: 'logicpanel',
     'password' => getenv('DB_PASSWORD') ?: 'logicpanel_password',

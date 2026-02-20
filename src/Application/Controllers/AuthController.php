@@ -34,9 +34,7 @@ class AuthController
             ], 400);
         }
 
-        $user = User::where('username', $username)
-            ->orWhere('email', $username)
-            ->first();
+        $user = User::where('username', $username)->first();
 
         if (!$user) {
             return $this->jsonResponse($response, [

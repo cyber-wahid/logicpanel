@@ -97,14 +97,14 @@ services:
       - "80"
     environment:
       - DB_CONNECTION=mysql
-      - DB_HOST=${DB_HOST_MAIN:-logicpanel-db}
+      - DB_HOST=logicpanel-db
       - DB_PORT=3306
       - DB_DATABASE=${DB_DATABASE:-logicpanel}
       - DB_USERNAME=${DB_USERNAME:-logicpanel}
       - DB_PASSWORD=${DB_PASSWORD:-logicpanel_password}
-      - MYSQL_CONTAINER=${DB_HOST_MYSQL:-lp-mysql-mother}
-      - POSTGRES_CONTAINER=${DB_HOST_PG:-lp-postgres-mother}
-      - MONGO_CONTAINER=${DB_HOST_MONGO:-lp-mongo-mother}
+      - MYSQL_CONTAINER=lp-mysql-mother
+      - POSTGRES_CONTAINER=lp-postgres-mother
+      - MONGO_CONTAINER=lp-mongo-mother
       # Docker Configuration - Use Proxy
       - DOCKER_HOST=tcp://docker-proxy:2375
       - DOCKER_NETWORK=${DOCKER_NETWORK:-panel_logicpanel_internal}
@@ -247,12 +247,13 @@ services:
           memory: 1G
 
   # MongoDB - Mother Container
+  # MongoDB - Mother Container
   mongo:
     image: mongo:7.0
     container_name: ${DB_HOST_MONGO:-lp_mongo_mother}
     restart: unless-stopped
     ports:
-      - "0.0.0.0:27017:27017" # Exposed to all interfaces for external connections
+      - "127.0.0.1:27017:27017" # Changed to localhost only for security
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
