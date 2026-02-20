@@ -151,56 +151,55 @@ check_port() {
     local force_kill=$2
     
     # 1. Check if ANY container is holding the port (not just logicpanel_)
-    local conflicting_container=$(docker ps --format '{{.Names}}' --filter "publish=$port" | head -n 1)
+    local conflicting_container=$(docker ps --format '{{.Names}}' --filter "publish=$port" 2>/dev/null | head -n 1)
     if [ ! -z "$conflicting_container" ]; then
         log_warn "Port $port is held by container: $conflicting_container"
         if [[ "$conflicting_container" == logicpanel_* ]] || [[ "$conflicting_container" == lp_* ]]; then
             log_info "Auto-removing LogicPanel container..."
             docker rm -f "$conflicting_container" >/dev/null 2>&1
-            sleep 1
+            sleep 2
         else
             if [ "$force_kill" != "force" ]; then
                 read -p "--- Port $port is held by '$conflicting_container'. Remove it? (y/n): " REM_CONT < /dev/tty
                 if [[ "$REM_CONT" =~ ^[Yy]$ ]]; then
                     docker rm -f "$conflicting_container" >/dev/null 2>&1
-                    sleep 1
+                    sleep 2
                 fi
             else
+                log_info "Force removing container on port $port..."
                 docker rm -f "$conflicting_container" >/dev/null 2>&1
+                sleep 2
             fi
         fi
     fi
 
     # 2. General check if port is still busy (non-container processes)
     if command -v lsof &> /dev/null; then
-        if $SUDO lsof -i :$port -sTCP:LISTEN -t >/dev/null; then
+        local pids=$($SUDO lsof -i :$port -sTCP:LISTEN -t 2>/dev/null)
+        if [ ! -z "$pids" ]; then
              if [ "$force_kill" = "force" ]; then
-                 # Try to kill explicitly
-                 local pid=$($SUDO lsof -i :$port -sTCP:LISTEN -t | head -1)
-                 if [ ! -z "$pid" ]; then
-                     log_warn "Force killing PID $pid on port $port..."
-                     $SUDO kill -9 $pid >/dev/null 2>&1 || true
-                     sleep 1
-                 fi
-                 return 1 # Return fail so caller knows we had to kill
+                 log_warn "Force killing processes on port $port: $pids"
+                 echo "$pids" | xargs -r $SUDO kill -9 2>/dev/null || true
+                 sleep 2
+                 return 1
             else
                  return 1
             fi
         fi
     elif command -v ss &> /dev/null; then
-        if ss -tuln | grep -E ":$port\s"; then
+        if ss -tuln 2>/dev/null | grep -qE ":$port\s"; then
             if [ "$force_kill" = "force" ]; then
                  $SUDO fuser -k -n tcp $port >/dev/null 2>&1 || true
-                 sleep 1
+                 sleep 2
             else
                  return 1
             fi
         fi
     elif command -v netstat &> /dev/null; then
-        if netstat -tuln | grep -E ":$port\s"; then
+        if netstat -tuln 2>/dev/null | grep -qE ":$port\s"; then
             if [ "$force_kill" = "force" ]; then
                  $SUDO fuser -k -n tcp $port >/dev/null 2>&1 || true
-                 sleep 1
+                 sleep 2
             else
                  return 1
             fi
@@ -210,10 +209,10 @@ check_port() {
     # 3. Explicit check for docker-proxy if port is 9999 or 80/443
     if [ "$force_kill" = "force" ]; then
          # This is the "Nuclear" part for zombie proxies
-         if pgrep -f "docker-proxy.*$port" > /dev/null; then
+         if pgrep -f "docker-proxy.*$port" > /dev/null 2>&1; then
              log_warn "Found specific docker-proxy for port $port. Killing it..."
-             $SUDO pkill -f "docker-proxy.*$port" || true
-             sleep 1
+             $SUDO pkill -9 -f "docker-proxy.*$port" 2>/dev/null || true
+             sleep 2
          fi
     fi
 
@@ -303,16 +302,32 @@ check_docker
 # Check required ports
 manage_selinux
 REQUIRED_PORTS=(80 443 9999 7777 3306 5432 27017)
+log_info "Checking required ports: ${REQUIRED_PORTS[*]}"
 for port in "${REQUIRED_PORTS[@]}"; do
     if ! check_port $port; then
-        log_warn "Port $port is held by a non-container process."
+        log_warn "Port $port is busy. Attempting to free it..."
         $SUDO fuser -k -n tcp $port 2>/dev/null || true
+        sleep 2
+        
+        # Force kill if still busy
+        check_port $port "force"
         sleep 1
+        
+        # Final verification
         if ! check_port $port; then
-            log_error "Could not clear port $port. Please free it manually and restart."
+            log_error "Could not clear port $port after multiple attempts."
+            log_error "Please manually stop the process using this port:"
+            if command -v lsof &> /dev/null; then
+                $SUDO lsof -i :$port
+            elif command -v ss &> /dev/null; then
+                ss -tulnp | grep ":$port"
+            fi
+            log_error "Then restart the installer."
             exit 1
         fi
         log_success "Port $port cleared."
+    else
+        log_success "Port $port is available."
     fi
 done
 
@@ -1286,11 +1301,19 @@ docker ps -a --format '{{.Names}}' | grep -E "^(logicpanel_|lp_)" | xargs -r doc
 log_info "Pre-deployment Port Check..."
 NEEDS_DOCKER_RESTART=false
 for port in 80 443 9999 7777; do
-    check_port $port "force"
+    log_info "Checking port $port..."
+    if ! check_port $port; then
+        log_warn "Port $port is busy, forcing cleanup..."
+        check_port $port "force"
+        sleep 2
+    fi
+    
     # Double check if it's REALLY gone
     if ! check_port $port; then
          log_warn "Port $port is persistent. Scheduling Docker restart."
          NEEDS_DOCKER_RESTART=true
+    else
+        log_success "Port $port is clear."
     fi
 done
 
@@ -1413,23 +1436,36 @@ if [ -f "create_admin.php" ]; then
 
     if [ "$DB_READY" = true ]; then
         log_success "Database is ready and accessible."
-        log_info "Creating administrator account..."
         
         log_info "Running database migrations..."
-        docker compose exec -T app bash /var/www/html/docker/migrate.sh || log_warn "Migration warning (non-fatal)"
+        docker compose exec -T app bash /var/www/html/docker/migrate.sh 2>/dev/null || log_warn "Migration warning (non-fatal)"
 
         log_info "Creating administrator account..."
         
+        # Store password securely before passing to container
+        ADMIN_PASS_SAFE="${ADMIN_PASS}"
+        
         # We don't use -T here to allow output to be visible if possible, but -T is safer for non-interactive scripts
-        if docker exec -T logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}"; then
+        if docker exec logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS_SAFE}" 2>&1; then
             log_success "Administrator account created/updated successfully!"
         else
-            log_error "Admin creation script failed! Check output above."
-            log_warn "You may need to create admin manually after installation:"
-            log_warn "docker exec -it logicpanel_app php create_admin.php --user=\"${ADMIN_USER}\" --email=\"${ADMIN_EMAIL}\" --pass=\"YOUR_PASS\""
+            log_error "Admin creation script failed! Attempting alternative method..."
+            
+            # Alternative: Try with environment variables
+            if docker exec -e ADMIN_USER="${ADMIN_USER}" -e ADMIN_EMAIL="${ADMIN_EMAIL}" -e ADMIN_PASS="${ADMIN_PASS_SAFE}" logicpanel_app php /var/www/html/create_admin.php 2>&1; then
+                log_success "Administrator account created via environment variables!"
+            else
+                log_error "Both admin creation methods failed!"
+                log_warn "You can create admin manually after installation:"
+                log_warn "  cd ${INSTALL_DIR}"
+                log_warn "  docker exec -it logicpanel_app php /var/www/html/create_admin.php \\"
+                log_warn "    --user=\"${ADMIN_USER}\" --email=\"${ADMIN_EMAIL}\" --pass=\"YOUR_PASSWORD\""
+            fi
         fi
     else
         log_error "Database failed to initialize within expected time."
+        log_warn "Check database logs: docker compose logs db"
+        log_warn "You may need to create admin manually after fixing database issues."
     fi
 else
     log_warn "create_admin.php not found. Please create admin manually after installation."
