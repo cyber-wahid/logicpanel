@@ -1171,6 +1171,8 @@ LOG_CHANNEL=stderr
 APP_URL=https://${PANEL_DOMAIN}
 PANEL_DOMAIN=${PANEL_DOMAIN}
 SERVER_IP=$(curl -s ifconfig.me || curl -s icanhazip.com || hostname -I | awk '{print $1}')
+ADMIN_USER=${ADMIN_USER}
+ADMIN_PASS=${ADMIN_PASS}
 
 # Ports
 MASTER_PORT=9999
