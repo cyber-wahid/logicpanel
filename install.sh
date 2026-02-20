@@ -1413,17 +1413,17 @@ if [ -f "create_admin.php" ]; then
 
         log_info "Creating administrator account..."
         
+        # We don't use -T here to allow output to be visible if possible, but -T is safer for non-interactive scripts
         if docker exec -T logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}"; then
-            log_success "Administrator account created successfully!"
+            log_success "Administrator account created/updated successfully!"
         else
-            log_warn "Admin creation had issues. You may need to create admin manually after installation."
+            log_error "Admin creation script failed! Check output above."
+            log_warn "You may need to create admin manually after installation:"
+            log_warn "docker exec -it logicpanel_app php create_admin.php --user=\"${ADMIN_USER}\" --email=\"${ADMIN_EMAIL}\" --pass=\"YOUR_PASS\""
         fi
     else
         log_error "Database failed to initialize within expected time."
     fi
-
-    # Clean up the admin script from container for security
-    docker exec -T logicpanel_app rm -f /var/www/html/create_admin.php 2>/dev/null || true
 else
     log_warn "create_admin.php not found. Please create admin manually after installation."
 fi

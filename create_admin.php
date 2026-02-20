@@ -36,14 +36,22 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 use LogicPanel\Domain\User\User;
 
 try {
+    $db_host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: 'logicpanel-db';
+    $db_port = $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?: '3306';
+    $db_name = $_ENV['DB_DATABASE'] ?? getenv('DB_DATABASE') ?: 'logicpanel';
+    $db_user = $_ENV['DB_USERNAME'] ?? getenv('DB_USERNAME') ?: 'logicpanel';
+    $db_pass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?: '';
+
+    echo "Connecting to database: {$db_host}:{$db_port}, DB: {$db_name}, User: {$db_user}\n";
+
     $capsule = new Capsule;
     $capsule->addConnection([
         'driver'    => 'mysql',
-        'host'      => $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: 'logicpanel-db',
-        'port'      => $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?: '3306',
-        'database'  => $_ENV['DB_DATABASE'] ?? getenv('DB_DATABASE') ?: 'logicpanel',
-        'username'  => $_ENV['DB_USERNAME'] ?? getenv('DB_USERNAME') ?: 'logicpanel',
-        'password'  => $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?: '',
+        'host'      => $db_host,
+        'port'      => $db_port,
+        'database'  => $db_name,
+        'username'  => $db_user,
+        'password'  => $db_pass,
         'charset'   => 'utf8mb4',
         'collation' => 'utf8mb4_unicode_ci',
         'prefix'    => '',
