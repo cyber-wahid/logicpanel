@@ -1382,110 +1382,12 @@ if [ "$ALL_RUNNING" = false ]; then
     sleep 5
 fi
 
-# Create admin user
-log_info "Step 5: Creating Administrator Account..."
-if [ -f "create_admin.php" ]; then
-
-    # --- Phase 1: Wait for App Container to be fully application-ready ---
-    # The entrypoint.sh runs composer install (2-5 min) + migrations before Apache starts.
-    # We must wait for the health endpoint to respond, meaning everything is ready.
-    log_info "Waiting for application container to be fully ready..."
-    log_info "  (entrypoint runs composer install + migrations — this may take 3-5 minutes on first install)"
-    MAX_APP_RETRIES=60
-    APP_READY=false
-    APP_COUNT=0
-
-    while [ $APP_COUNT -lt $MAX_APP_RETRIES ]; do
-        # Check if the health endpoint responds (means Apache is up, composer done, entrypoint finished)
-        if docker exec -T logicpanel_app curl -sf http://localhost/public/health.php >/dev/null 2>&1; then
-            APP_READY=true
-            break
-        fi
-        # Fallback: also try wget in case curl isn't available
-        if docker exec -T logicpanel_app wget -qO- http://localhost/public/health.php >/dev/null 2>&1; then
-            APP_READY=true
-            break
-        fi
-        echo -n "."
-        sleep 10
-        APP_COUNT=$((APP_COUNT+1))
-    done
-    echo ""
-
-    if [ "$APP_READY" = true ]; then
-        log_success "Application container is ready."
-    else
-        log_warn "Application health check timed out (waited $((MAX_APP_RETRIES * 10))s)."
-        log_warn "The entrypoint may still be running. Proceeding with admin creation anyway..."
-    fi
-
-    # --- Phase 2: Verify Database Schema is Ready (users table exists) ---
-    log_info "Verifying database schema (checking for users table)..."
-    SCHEMA_RETRIES=18
-    SCHEMA_READY=false
-    SCOUNT=0
-
-    while [ $SCOUNT -lt $SCHEMA_RETRIES ]; do
-        if docker exec -T logicpanel_app php -r "
-            try {
-                \$host = getenv('DB_HOST') ?: 'logicpanel-db';
-                \$db   = getenv('DB_DATABASE') ?: 'logicpanel';
-                \$user = getenv('DB_USERNAME') ?: 'logicpanel';
-                \$pass = getenv('DB_PASSWORD') ?: '';
-                \$pdo  = new PDO(\"mysql:host=\$host;dbname=\$db\", \$user, \$pass);
-                \$stmt = \$pdo->query(\"SHOW TABLES LIKE 'users'\");
-                if (\$stmt->rowCount() > 0) { echo 'ready'; exit(0); }
-                exit(1);
-            } catch(Exception \$e) { exit(1); }
-        " 2>/dev/null | grep -q "ready"; then
-            SCHEMA_READY=true
-            break
-        fi
-        echo -n "."
-        sleep 10
-        SCOUNT=$((SCOUNT+1))
-    done
-    echo ""
-
-    if [ "$SCHEMA_READY" = true ]; then
-        log_success "Database schema is ready (users table exists)."
-
-        # --- Phase 3: Create Admin Account (with retry) ---
-        log_info "Creating administrator account..."
-        ADMIN_CREATED=false
-
-        for attempt in 1 2 3; do
-            if docker exec -T logicpanel_app php /var/www/html/create_admin.php \
-                --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS}" 2>&1; then
-                ADMIN_CREATED=true
-                break
-            else
-                log_warn "  Attempt $attempt failed. Retrying in 5 seconds..."
-                sleep 5
-            fi
-        done
-
-        if [ "$ADMIN_CREATED" = true ]; then
-            log_success "Administrator account created successfully!"
-        else
-            log_warn "Admin creation failed after 3 attempts."
-            log_warn "You can create admin manually after installation:"
-            log_warn "  docker exec -T logicpanel_app php /var/www/html/create_admin.php \\"
-            log_warn "    --user=\"${ADMIN_USER}\" --email=\"${ADMIN_EMAIL}\" --pass=\"YOUR_PASSWORD\""
-        fi
-    else
-        log_error "Database schema not ready (users table not found after $((SCHEMA_RETRIES * 10))s)."
-        log_warn "The entrypoint may still be running migrations. Please wait and create admin manually:"
-        log_warn "  docker exec -T logicpanel_app php /var/www/html/create_admin.php \\"
-        log_warn "    --user=\"${ADMIN_USER}\" --email=\"${ADMIN_EMAIL}\" --pass=\"YOUR_PASSWORD\""
-    fi
-
-    # NOTE: We intentionally do NOT delete create_admin.php here.
-    # This allows manual retry if automatic creation failed.
-    # The file is safe since it requires CLI arguments and runs from container only.
-else
-    log_warn "create_admin.php not found. Please create admin manually after installation."
-fi
+# Final initialization note
+log_info "Step 5: Finalizing Backend Services..."
+log_info "The panel is now performing final initialization in the background."
+log_info "  (This includes composer install, migrations, and admin creation)"
+log_info "You can monitor progress with: docker compose logs -f app"
+echo ""
 
 # ─── 5. Final Setup & Summary ───
 log_info "Proceeding to final setup and verification..."

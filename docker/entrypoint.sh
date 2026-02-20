@@ -135,6 +135,13 @@ else
     fi
 fi
 
+# Create admin user if environment variables are provided
+if [ -n "$ADMIN_USER" ] && [ -n "$ADMIN_EMAIL" ] && [ -n "$ADMIN_PASS" ]; then
+    echo "=== Creating Administrator Account ==="
+    # Use the existing create_admin.php script
+    php /var/www/html/create_admin.php --user="$ADMIN_USER" --email="$ADMIN_EMAIL" --pass="$ADMIN_PASS" || echo "⚠ Admin creation script had warnings (continuing...)"
+fi
+
 echo "=== LogicPanel Ready ==="
 echo "Note: SSL is handled by Traefik reverse proxy"
 

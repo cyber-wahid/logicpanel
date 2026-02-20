@@ -115,6 +115,8 @@ services:
       - MASTER_PORT=${MASTER_PORT:-9999}
       - USER_PORT=${USER_PORT:-7777}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@localhost}
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASS=${ADMIN_PASS}
       - JWT_SECRET=${JWT_SECRET}
     volumes:
       - .:/var/www/html
@@ -145,7 +147,7 @@ services:
         condition: service_started
     # No Traefik labels - routers defined in dynamic.yml
 
-  # Terminal Gateway (PHP Ratchet Sidecar)
+    # Terminal Gateway (PHP Ratchet Sidecar)
   terminal-gateway:
     image: ghcr.io/cyber-wahid/logicpanel/gateway:latest
     build: ./services/gateway
@@ -313,4 +315,3 @@ services:
       - mysql
       - postgres
       - mongo
-
