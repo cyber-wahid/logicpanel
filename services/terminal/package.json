@@ -1,0 +1,16 @@
+{
+  "name": "logicpanel-terminal-gateway",
+  "version": "1.0.0",
+  "description": "Real-time terminal gateway for Docker containers",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "node-pty": "^1.0.0",
+    "cors": "^2.8.5",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

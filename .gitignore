@@ -1,0 +1,60 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+vendor/
+node_modules/
+**/node_modules/
+
+# Storage & Logs
+storage/logs/*.log
+storage/logs/*
+!storage/logs/.gitkeep
+storage/user-apps/*
+!storage/user-apps/.gitkeep
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/framework/ratelimit/*
+!storage/framework/ratelimit/.gitkeep
+storage/backups/*
+!storage/backups/.gitkeep
+public/storage
+
+# SSL Certificates (Sensitive Data)
+letsencrypt/
+
+# Configuration
+config/settings.json
+
+# IDE & Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backups & Temp
+*.backup
+*.bak
+*.old
+*.tmp
+
+# Build artifacts
+docker-compose.override.yml
+
+# Traefik dynamic app configs (auto-generated)
+docker/traefik/apps/*.yml
+!docker/traefik/apps/.gitkeep
+
+# Temporary docs (keep only in development)
+DELETION_FIX.md
+UPDATE_SYSTEM.md
+SSL_SETUP_GUIDE.md
+Archive/

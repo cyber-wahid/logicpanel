@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogicPanel - PaaS Control Panel</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --text: #e2e8f0;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --card-bg: #1e293b;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #60a5fa, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: #94a3b8;
+            margin-bottom: 2rem;
+        }
+
+        .links {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .link-card {
+            background-color: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            text-decoration: none;
+            color: var(--text);
+            transition: transform 0.2s, background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid #334155;
+        }
+
+        .link-card:hover {
+            transform: translateY(-2px);
+            background-color: #263345;
+            border-color: var(--primary);
+        }
+
+        .link-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .icon {
+            opacity: 0.7;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>LogicPanel</h1>
+        <p>Next-generation PaaS Control Panel</p>
+
+        <div class="links">
+            <a href="https://docs.logicdock.cloud" target="_blank" class="link-card">
+                <span class="link-title">📚 Documentation</span>
+                <span class="icon">➜</span>
+            </a>
+
+            <a href="https://github.com/cyber-wahid/logicpanel" target="_blank" class="link-card">
+                <span class="link-title">⭐ GitHub Repository</span>
+                <span class="icon">➜</span>
+            </a>
+
+            <a href="#" id="master-link" class="link-card">
+                <span class="link-title">⚡ Master Panel (Admin)</span>
+                <span class="icon">➜</span>
+            </a>
+
+            <a href="#" id="user-link" class="link-card">
+                <span class="link-title">🚀 User Panel (Client)</span>
+                <span class="icon">➜</span>
+            </a>
+        </div>
+
+        <p style="margin-top: 2rem; font-size: 0.8rem;">
+            &copy;
+            <script>document.write(new Date().getFullYear())</script> LogicDock Cloud
+        </p>
+    </div>
+
+    <script>
+        // Dynamic Panel Links based on current domain
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol;
+        const port = window.location.port ? ':' + window.location.port : '';
+
+        // If accessed via port 80/443, assume standard panel ports
+        // If on localhost development, use localhost
+
+        // Master Panel is typically on port 9999
+        document.getElementById('master-link').href = `${protocol}//${hostname}:9999`;
+
+        // User Panel is typically on port 7777
+        document.getElementById('user-link').href = `${protocol}//${hostname}:7777`;
+    </script>
+</body>
+
+</html>

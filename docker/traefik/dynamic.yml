@@ -1,0 +1,112 @@
+# Traefik Dynamic Configuration
+# All routers, services, and middlewares defined here
+
+http:
+  # Services
+  services:
+    logicpanel-app:
+      loadBalancer:
+        servers:
+          - url: "http://logicpanel_app:80"
+    
+    terminal-gateway:
+      loadBalancer:
+        servers:
+          - url: "http://logicpanel_gateway:3002"
+
+
+
+  # Routers
+  routers:
+    # HTTP Router (Port 80) - Landing Page + Redirect to HTTPS
+    panel-http:
+      entryPoints:
+        - web
+      rule: "Host(`{{PANEL_DOMAIN}}`)"
+      service: logicpanel-app
+      middlewares:
+        - redirect-https
+    
+    # HTTPS Router (Port 443) - Landing Page + Certificate acquisition
+    panel-https:
+      entryPoints:
+        - websecure
+      rule: "Host(`{{PANEL_DOMAIN}}`)"
+      service: logicpanel-app
+      middlewares:
+        - h3-header-443
+      tls:
+        certResolver: letsencrypt
+    
+    # User Panel (Port 777/ext 7777)
+    # Uses Let's Encrypt certificate obtained via port 443
+    panel-user:
+      entryPoints:
+        - userpanel
+      rule: "Host(`{{PANEL_DOMAIN}}`)"
+      service: logicpanel-app
+      middlewares:
+        - userpanel-headers
+        - h3-header-7777
+      tls:
+        certResolver: letsencrypt
+    
+    # Master Panel (Port 999/ext 9999)
+    # Uses Let's Encrypt certificate obtained via port 443
+    panel-master:
+      entryPoints:
+        - masterpanel
+      rule: "Host(`{{PANEL_DOMAIN}}`)"
+      service: logicpanel-app
+      middlewares:
+        - masterpanel-headers
+        - h3-header-9999
+      tls:
+        certResolver: letsencrypt
+    
+    # Terminal WebSocket
+    terminal-ws:
+      entryPoints:
+        - websecure
+        - userpanel
+        - masterpanel
+      rule: "Host(`{{PANEL_DOMAIN}}`) && PathPrefix(`/ws`)"
+      priority: 100
+      service: terminal-gateway
+      middlewares:
+        - h3-header-443
+      tls:
+        certResolver: letsencrypt
+
+  # Middlewares
+  middlewares:
+    redirect-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+    
+    userpanel-headers:
+      headers:
+        customRequestHeaders:
+          X-Panel-Type: "user"
+    
+    masterpanel-headers:
+      headers:
+        customRequestHeaders:
+          X-Panel-Type: "master"
+
+    # HTTP/3 Headers
+    h3-header-443:
+      headers:
+        customResponseHeaders:
+          Alt-Svc: 'h3=":443"; ma=2592000, h3-29=":443"; ma=2592000'
+    
+    h3-header-7777:
+      headers:
+        customResponseHeaders:
+          Alt-Svc: 'h3=":7777"; ma=2592000, h3-29=":7777"; ma=2592000'
+    
+    h3-header-9999:
+      headers:
+        customResponseHeaders:
+          Alt-Svc: 'h3=":9999"; ma=2592000, h3-29=":9999"; ma=2592000'

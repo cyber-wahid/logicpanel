@@ -1,0 +1,17 @@
+* text=auto
+
+# Shell scripts must strictly use LF to run on Linux servers
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Docker files/config should generally use LF
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+.env.example text eol=lf
+.gitignore text eol=lf
+
+# PHP/Web files can be auto (Git handles CRLF on Windows checkouts if configured), but preserving LF is safer for mixed dev
+*.php text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.sql text eol=lf

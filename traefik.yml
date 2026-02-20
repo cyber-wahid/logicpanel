@@ -1,0 +1,67 @@
+# Traefik Static Configuration - Simplified
+# File provider only, no Docker provider (avoiding connection issues)
+
+api:
+  dashboard: false
+  insecure: false
+
+ping:
+  entryPoint: traefik
+
+log:
+  level: ERROR
+  format: json
+
+# Entry Points
+entryPoints:
+  traefik:
+    address: ":8082"
+  
+  # HTTP - Port 80
+  web:
+    address: ":80"
+  
+  # HTTPS - Port 443
+  websecure:
+    address: ":443"
+    http:
+      tls: {}
+    http3:
+      advertisedPort: 443
+  
+  # User Panel - Port 7777
+  userpanel:
+    address: ":7777"
+    http:
+      tls: {}
+    http3:
+      advertisedPort: 7777
+  
+  # Master Panel - Port 9999
+  masterpanel:
+    address: ":9999"
+    http:
+      tls: {}
+    http3:
+      advertisedPort: 9999
+
+# Certificate Resolver - HTTP-01 Challenge
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: "{{ADMIN_EMAIL}}"
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
+
+# File Provider
+providers:
+  file:
+    directory: /etc/traefik
+    watch: true
+  
+  # Docker Provider via Proxy
+  docker:
+    endpoint: "tcp://docker-proxy:2375"
+    exposedByDefault: false
+    network: logicpanel_internal

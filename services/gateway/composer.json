@@ -1,0 +1,14 @@
+{
+    "name": "logicpanel/gateway",
+    "description": "WebSocket Terminal Gateway for LogicPanel",
+    "require": {
+        "cboden/ratchet": "^0.4.4",
+        "firebase/php-jwt": "^6.10",
+        "react/event-loop": "^1.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "Gateway\\": "src/"
+        }
+    }
+}

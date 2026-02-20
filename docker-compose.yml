@@ -1,0 +1,316 @@
+networks:
+  # Internal network for LogicPanel services
+  logicpanel_internal:
+    name: ${DOCKER_NETWORK:-logicpanel_internal}
+    driver: bridge
+    external: true
+
+volumes:
+  mysql_data:
+  postgres_data:
+  mongo_data:
+  redis_data:
+  logicpanel_db_maria_data:
+  logicpanel_user_apps: # Let's Encrypt certificate storage
+
+  # Traefik logs
+  traefik_logs:
+
+
+services:
+  # Traefik - Reverse Proxy & SSL Termination
+  traefik:
+    image: traefik:v3.0
+    container_name: logicpanel_traefik
+    restart: unless-stopped
+    depends_on:
+      - docker-proxy
+    ports:
+      - "80:80" # HTTP (Let's Encrypt challenge + redirect)
+      - "443:443" # HTTPS (standard)
+      - "443:443/udp" # HTTP/3 (QUIC) on port 443
+      - "${USER_PORT:-7777}:7777" # User Panel (HTTPS)
+      - "${USER_PORT:-7777}:7777/udp" # HTTP/3 (QUIC) on User Panel
+      - "${MASTER_PORT:-9999}:9999" # Master Panel (HTTPS)
+      - "${MASTER_PORT:-9999}:9999/udp" # HTTP/3 (QUIC) on Master Panel
+      # - "8080:8080"  # Traefik Dashboard (dev only)
+    volumes:
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./docker/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./docker/traefik/apps:/etc/traefik/apps:ro
+      - ./letsencrypt:/letsencrypt
+      - traefik_logs:/var/log/traefik
+    environment:
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=${ADMIN_EMAIL:-admin@logicpanel.cloud}
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT__DNS_ACME_EMAIL=${ADMIN_EMAIL:-admin@logicpanel.cloud}
+      # Optional: Cloudflare API for wildcard SSL (*.yourdomain.com)
+      # Create token at: https://dash.cloudflare.com/profile/api-tokens
+      # Permission: Zone > DNS > Edit
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN:-}
+    networks:
+      - logicpanel_internal
+    healthcheck:
+      test: [ "CMD", "traefik", "healthcheck", "--ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "traefik.enable=true"
+
+  # Docker Socket Proxy - Secure Docker API access
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: logicpanel_socket_proxy
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - CONTAINERS=1
+      - POST=1
+      - EXEC=1
+      - IMAGES=1
+      - INFO=1
+      - NETWORKS=1
+      - SERVICES=1
+      - TASKS=1
+      - VOLUMES=1
+      - START=1
+      - STOP=1
+      - KILL=1
+      - RESTART=1
+      # Required for Traefik
+      - VERSION=1
+      - EVENTS=1
+      - PING=1
+    networks:
+      - logicpanel_internal
+
+  # LogicPanel Application (The Dashboard)
+  app:
+    image: ghcr.io/cyber-wahid/logicpanel:latest
+    build: .
+    container_name: logicpanel_app
+    restart: unless-stopped
+    # Ports exposed via Traefik, not directly
+    expose:
+      - "80"
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=logicpanel-db
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-logicpanel}
+      - DB_USERNAME=${DB_USERNAME:-logicpanel}
+      - DB_PASSWORD=${DB_PASSWORD:-logicpanel_password}
+      - MYSQL_CONTAINER=lp-mysql-mother
+      - POSTGRES_CONTAINER=lp-postgres-mother
+      - MONGO_CONTAINER=lp-mongo-mother
+      # Docker Configuration - Use Proxy
+      - DOCKER_HOST=tcp://docker-proxy:2375
+      - DOCKER_NETWORK=${DOCKER_NETWORK:-panel_logicpanel_internal}
+      - USER_APPS_PATH=/var/www/html/storage/user-apps
+      - USER_APPS_HOST_PATH=${USER_APPS_HOST_PATH:-/opt/logicpanel/storage/user-apps}
+      - APP_DOMAIN=${PANEL_DOMAIN:-logicpanel.cloud}
+      - PANEL_DOMAIN=${PANEL_DOMAIN:-logicpanel.cloud}
+      - MASTER_PORT=${MASTER_PORT:-9999}
+      - USER_PORT=${USER_PORT:-7777}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@localhost}
+      - JWT_SECRET=${JWT_SECRET}
+    volumes:
+      - .:/var/www/html
+    networks:
+      - logicpanel_internal
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost/public/health.php" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      logicpanel-db:
+        condition: service_healthy
+      mysql:
+        condition: service_started
+      postgres:
+        condition: service_started
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_started
+      docker-proxy:
+        condition: service_started
+      traefik:
+        condition: service_started
+    # No Traefik labels - routers defined in dynamic.yml
+
+  # Terminal Gateway (PHP Ratchet Sidecar)
+  terminal-gateway:
+    image: ghcr.io/cyber-wahid/logicpanel/gateway:latest
+    build: ./services/gateway
+    container_name: logicpanel_gateway
+    restart: unless-stopped
+    expose:
+      - "3002"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - logicpanel_internal
+    labels:
+      - "traefik.enable=true"
+      # WebSocket Router for Terminal
+      # Terminal WebSocket - All HTTPS ports
+      - "traefik.http.routers.terminal-ws.rule=PathPrefix(`/ws`)"
+      - "traefik.http.routers.terminal-ws.entrypoints=websecure,userpanel,masterpanel"
+      - "traefik.http.routers.terminal-ws.tls=true"
+      - "traefik.http.routers.terminal-ws.service=terminal-gateway"
+      - "traefik.http.services.terminal-gateway.loadbalancer.server.port=3002"
+
+  # LogicPanel Dedicated Database (MariaDB 10.11)
+  logicpanel-db:
+    image: mariadb:10.11
+    container_name: ${DB_HOST_MAIN:-logicpanel_db}
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-logicpanel}
+      MYSQL_USER: ${DB_USERNAME:-logicpanel}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-logicpanel_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - logicpanel_db_maria_data:/var/lib/mysql
+    networks:
+      - logicpanel_internal
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: [ "CMD-SHELL", "healthcheck.sh --connect --innodb_initialized" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: 512M
+
+  # MariaDB - Mother Container
+  mysql:
+    image: mariadb:11.2
+    container_name: ${DB_HOST_MYSQL:-lp_mysql_mother}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3306:3306" # Localhost only
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - logicpanel_internal
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  # PostgreSQL - Mother Container
+  # PostgreSQL - Mother Container
+  postgres:
+    image: postgres:16-alpine
+    container_name: ${DB_HOST_PG:-lp_postgres_mother}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432" # Localhost only
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_ROOT_PASSWORD}
+      POSTGRES_DB: postgres
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - logicpanel_internal
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  # MongoDB - Mother Container
+  # MongoDB - Mother Container
+  mongo:
+    image: mongo:7.0
+    container_name: ${DB_HOST_MONGO:-lp_mongo_mother}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27017:27017" # Changed to localhost only for security
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+      - ./docker/mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    networks:
+      - logicpanel_internal
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  # Redis - For Queue and Cache
+  redis:
+    image: redis:7-alpine
+    container_name: logicpanel_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - logicpanel_internal
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # DB Provisioner Service (Microservice)
+  db-provisioner:
+    image: ghcr.io/cyber-wahid/logicpanel/db-provisioner:latest
+    build: ./docker/db-provisioner
+    container_name: logicpanel_db_provisioner
+    restart: unless-stopped
+    # Expose port mostly for debugging, internal comm uses network
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - API_SECRET=${DB_PROVISIONER_SECRET}
+      - MYSQL_HOST=${DB_HOST_MYSQL:-lp_mysql_mother}
+      - MYSQL_PORT=3306
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - POSTGRES_HOST=${DB_HOST_PG:-lp_postgres_mother}
+      - POSTGRES_PORT=5432
+      - POSTGRES_ROOT_PASSWORD=${POSTGRES_ROOT_PASSWORD}
+      - MONGO_HOST=${DB_HOST_MONGO:-lp_mongo_mother}
+      - MONGO_PORT=27017
+      - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    networks:
+      - logicpanel_internal
+    depends_on:
+      - mysql
+      - postgres
+      - mongo
+
