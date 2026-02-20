@@ -97,14 +97,14 @@ services:
       - "80"
     environment:
       - DB_CONNECTION=mysql
-      - DB_HOST=logicpanel-db
+      - DB_HOST=${DB_HOST_MAIN:-logicpanel-db}
       - DB_PORT=3306
       - DB_DATABASE=${DB_DATABASE:-logicpanel}
       - DB_USERNAME=${DB_USERNAME:-logicpanel}
       - DB_PASSWORD=${DB_PASSWORD:-logicpanel_password}
-      - MYSQL_CONTAINER=lp-mysql-mother
-      - POSTGRES_CONTAINER=lp-postgres-mother
-      - MONGO_CONTAINER=lp-mongo-mother
+      - MYSQL_CONTAINER=${DB_HOST_MYSQL:-lp-mysql-mother}
+      - POSTGRES_CONTAINER=${DB_HOST_PG:-lp-postgres-mother}
+      - MONGO_CONTAINER=${DB_HOST_MONGO:-lp-mongo-mother}
       # Docker Configuration - Use Proxy
       - DOCKER_HOST=tcp://docker-proxy:2375
       - DOCKER_NETWORK=${DOCKER_NETWORK:-panel_logicpanel_internal}
