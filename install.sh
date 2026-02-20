@@ -1412,24 +1412,89 @@ fi
 # Create admin user
 log_info "Setting up admin creation script..."
 if [ -f "create_admin.php" ]; then
-    docker exec -T logicpanel_app mkdir -p /var/www/html/database 2>/dev/null || true
+    docker exec logicpanel_app mkdir -p /var/www/html/database 2>/dev/null || true
     docker cp config/settings.json logicpanel_app:/var/www/html/config/settings.json 2>/dev/null || true
 
-    # Wait for Database to be ready
-    log_info "Waiting for Database to initialize..."
-    MAX_RETRIES=30
+    # Wait for Database to be ready - use docker-compose healthcheck
+    log_info "Waiting for Database to initialize (this may take 30-60 seconds)..."
+    
+    # Get the actual database container name from environment
+    ACTUAL_DB_CONTAINER=$(docker exec logicpanel_app printenv DB_HOST 2>/dev/null || echo "logicpanel-db")
+    
+    log_info "Database container: ${ACTUAL_DB_CONTAINER}"
+    
+    MAX_RETRIES=60
+    COUNT=0
+    DB_HEALTHY=false
+    
+    # Wait for database container to be healthy (docker-compose healthcheck)
+    log_info "Waiting for database healthcheck to pass..."
+    while [ $COUNT -lt $MAX_RETRIES ]; do
+        HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' ${ACTUAL_DB_CONTAINER} 2>/dev/null || echo "none")
+        
+        if [ "$HEALTH_STATUS" = "healthy" ]; then
+            DB_HEALTHY=true
+            log_success "Database container is healthy!"
+            break
+        elif [ "$HEALTH_STATUS" = "none" ]; then
+            # No healthcheck defined, fallback to connection test
+            log_warn "No healthcheck found, using connection test..."
+            break
+        fi
+        
+        if [ $((COUNT % 5)) -eq 0 ]; then
+            log_info "Database status: $HEALTH_STATUS (waiting...)"
+        fi
+        
+        echo -n "."
+        sleep 2
+        COUNT=$((COUNT+1))
+    done
+    echo ""
+    
+    # Now test actual database connection
+    log_info "Testing database connection..."
     COUNT=0
     DB_READY=false
     
-    while [ $COUNT -lt $MAX_RETRIES ]; do
-        # Passing variables explicitly to docker exec ensures they are available to php -r
-        # We use DB_HOST_MAIN which is the randomized hostname for the main DB container
-        if docker exec -T -e DB_DATABASE="${DB_NAME}" -e DB_USERNAME="${DB_USER}" -e DB_PASSWORD="${DB_PASS}" -e DB_HOST="${DB_HOST_MAIN}" logicpanel_app php -r "try { \$pdo = new PDO('mysql:host='.getenv('DB_HOST').';dbname='.getenv('DB_DATABASE'), getenv('DB_USERNAME'), getenv('DB_PASSWORD'), [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 5]); echo 'connected'; } catch(Exception \$e) { exit(1); }" >/dev/null 2>&1; then
+    while [ $COUNT -lt 30 ]; do
+        # Test connection using the container's environment variables
+        DB_TEST_OUTPUT=$(docker exec logicpanel_app php -r "
+        try {
+            \$host = getenv('DB_HOST');
+            \$db = getenv('DB_DATABASE');
+            \$user = getenv('DB_USERNAME');
+            \$pass = getenv('DB_PASSWORD');
+            
+            if (empty(\$host) || empty(\$db) || empty(\$user)) {
+                echo 'ERROR: Missing environment variables';
+                exit(1);
+            }
+            
+            \$pdo = new PDO(
+                \"mysql:host=\$host;dbname=\$db\",
+                \$user,
+                \$pass,
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 10]
+            );
+            echo 'connected';
+            exit(0);
+        } catch(PDOException \$e) {
+            echo 'PDO_ERROR: ' . \$e->getMessage();
+            exit(1);
+        }" 2>&1)
+        
+        if echo "$DB_TEST_OUTPUT" | grep -q "connected"; then
             DB_READY=true
+            log_success "Database connection successful!"
             break
+        elif [ $COUNT -eq 10 ] || [ $COUNT -eq 20 ]; then
+            # Show error periodically
+            log_warn "Still connecting... ($DB_TEST_OUTPUT)"
         fi
+        
         echo -n "."
-        sleep 5
+        sleep 3
         COUNT=$((COUNT+1))
     done
     echo ""
@@ -1438,16 +1503,25 @@ if [ -f "create_admin.php" ]; then
         log_success "Database is ready and accessible."
         
         log_info "Running database migrations..."
-        docker compose exec -T app bash /var/www/html/docker/migrate.sh 2>/dev/null || log_warn "Migration warning (non-fatal)"
+        if docker exec logicpanel_app bash /var/www/html/docker/migrate.sh 2>&1; then
+            log_success "Database migrations completed successfully!"
+        else
+            log_error "Database migrations failed!"
+            log_warn "Check migration logs above for details"
+            log_warn "You may need to run migrations manually:"
+            log_warn "  docker exec logicpanel_app bash /var/www/html/docker/migrate.sh"
+        fi
 
-        log_info "Creating administrator account..."
+        log_info "Creating master panel administrator account..."
+        log_info "This account will be used to access the Master Panel (port 9999)"
         
         # Store password securely before passing to container
         ADMIN_PASS_SAFE="${ADMIN_PASS}"
         
-        # We don't use -T here to allow output to be visible if possible, but -T is safer for non-interactive scripts
+        # Create admin with verbose output
         if docker exec logicpanel_app php /var/www/html/create_admin.php --user="${ADMIN_USER}" --email="${ADMIN_EMAIL}" --pass="${ADMIN_PASS_SAFE}" 2>&1; then
-            log_success "Administrator account created/updated successfully!"
+            log_success "Master Panel administrator account created successfully!"
+            log_success "Login at: https://${PANEL_DOMAIN}:9999"
         else
             log_error "Admin creation script failed! Attempting alternative method..."
             
@@ -1456,7 +1530,7 @@ if [ -f "create_admin.php" ]; then
                 log_success "Administrator account created via environment variables!"
             else
                 log_error "Both admin creation methods failed!"
-                log_warn "You can create admin manually after installation:"
+                log_warn "Manual creation command:"
                 log_warn "  cd ${INSTALL_DIR}"
                 log_warn "  docker exec -it logicpanel_app php /var/www/html/create_admin.php \\"
                 log_warn "    --user=\"${ADMIN_USER}\" --email=\"${ADMIN_EMAIL}\" --pass=\"YOUR_PASSWORD\""
@@ -1464,8 +1538,20 @@ if [ -f "create_admin.php" ]; then
         fi
     else
         log_error "Database failed to initialize within expected time."
-        log_warn "Check database logs: docker compose logs db"
-        log_warn "You may need to create admin manually after fixing database issues."
+        log_warn "Troubleshooting steps:"
+        log_warn "  1. Check database container logs:"
+        log_warn "     docker compose logs logicpanel-db"
+        log_warn "  2. Check app container logs:"
+        log_warn "     docker compose logs app"
+        log_warn "  3. Verify database container is running:"
+        log_warn "     docker ps | grep logicpanel"
+        log_warn "  4. Check database health:"
+        log_warn "     docker inspect --format='{{.State.Health.Status}}' logicpanel-db"
+        log_warn ""
+        log_warn "After fixing database issues, run migrations and create admin:"
+        log_warn "  docker exec logicpanel_app bash /var/www/html/docker/migrate.sh"
+        log_warn "  docker exec -it logicpanel_app php /var/www/html/create_admin.php \\"
+        log_warn "    --user=\"${ADMIN_USER}\" --email=\"${ADMIN_EMAIL}\" --pass=\"YOUR_PASSWORD\""
     fi
 else
     log_warn "create_admin.php not found. Please create admin manually after installation."
