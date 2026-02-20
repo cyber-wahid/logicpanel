@@ -168,6 +168,81 @@ class DomainController
         }
     }
 
+    // API: List domains for a specific account (WHMCS/Blesta)
+    public function listForAccount(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $accountId = (int) ($args['accountId'] ?? 0);
+        $user = \LogicPanel\Domain\User\User::find($accountId);
+
+        if (!$user) {
+            return $this->jsonResponse($response, ['error' => 'Account not found'], 404);
+        }
+
+        $domains = Domain::where('user_id', $accountId)->get();
+
+        $data = $domains->map(function ($domain) {
+            return [
+                'id' => $domain->id,
+                'name' => $domain->name,
+                'type' => $domain->type,
+                'path' => $domain->path,
+                'status' => $domain->status,
+                'ssl_enabled' => $domain->ssl_enabled,
+                'created_at' => $domain->created_at ? $domain->created_at->toIso8601String() : null,
+            ];
+        });
+
+        return $this->jsonResponse($response, ['domains' => $data]);
+    }
+
+    // API: Create a domain for a specific account (WHMCS/Blesta)
+    public function createForAccount(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $accountId = (int) ($args['accountId'] ?? 0);
+        $user = \LogicPanel\Domain\User\User::find($accountId);
+
+        if (!$user) {
+            return $this->jsonResponse($response, ['error' => 'Account not found'], 404);
+        }
+
+        $data = $request->getParsedBody();
+        $name = $data['name'] ?? '';
+        $type = $data['type'] ?? 'primary';
+        $path = $data['path'] ?? '/public_html';
+
+        if (empty($name)) {
+            return $this->jsonResponse($response, ['error' => 'Domain name is required'], 400);
+        }
+
+        if (Domain::where('name', $name)->exists()) {
+            return $this->jsonResponse($response, ['error' => 'Domain already exists'], 409);
+        }
+
+        try {
+            $domain = new Domain();
+            $domain->name = $name;
+            $domain->user_id = $accountId;
+            $domain->type = $type;
+            $domain->path = $path;
+            if (!empty($data['parent_id'])) {
+                $domain->parent_id = $data['parent_id'];
+            }
+            $domain->save();
+
+            return $this->jsonResponse($response, [
+                'result' => 'success',
+                'message' => 'Domain created successfully',
+                'domain' => [
+                    'id' => $domain->id,
+                    'name' => $domain->name,
+                    'type' => $domain->type,
+                ]
+            ], 201);
+        } catch (\Exception $e) {
+            return $this->jsonResponse($response, ['error' => 'Failed to create domain: ' . $e->getMessage()], 500);
+        }
+    }
+
     private function jsonResponse(ResponseInterface $response, array $data, int $status = 200): ResponseInterface
     {
         $response->getBody()->write(json_encode($data));

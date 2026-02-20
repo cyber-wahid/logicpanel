@@ -4,7 +4,8 @@ RewriteEngine On
 RewriteRule ^(\.env|\.git|\.dockerignore|Dockerfile|docker-compose\.yml|composer\.(json|lock)|install\.sh|uninstall\.sh|create_admin\.php|index_master\.php)$ - [F,L]
 RewriteRule ^(database|config|src|storage/logs)/ - [F,L]
 
-# API Routes - Direct both /api/ and /public/api/ to public/api.php
+# API Routes - Direct /v1/api/, /api/, and /public/api/ to public/api.php
+RewriteRule ^v1/api/(.*)$ public/api.php [QSA,L]
 RewriteRule ^api/(.*)$ public/api.php [QSA,L]
 RewriteRule ^public/api/(.*)$ public/api.php [QSA,L]
 

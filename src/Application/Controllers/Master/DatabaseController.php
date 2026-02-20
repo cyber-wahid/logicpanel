@@ -116,6 +116,72 @@ class DatabaseController
         }
     }
 
+    // API: List databases for a specific account (WHMCS/Blesta)
+    public function listForAccount(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $accountId = (int) ($args['accountId'] ?? 0);
+        $user = \LogicPanel\Domain\User\User::find($accountId);
+
+        if (!$user) {
+            return $this->jsonResponse($response, ['error' => 'Account not found'], 404);
+        }
+
+        $databases = Database::where('user_id', $accountId)->get();
+
+        $data = $databases->map(function ($db) {
+            return [
+                'id' => $db->id,
+                'name' => $db->db_name,
+                'type' => $db->db_type,
+                'user' => $db->db_user,
+                'host' => $db->db_host,
+                'port' => $db->db_port,
+                'status' => $db->status,
+                'created_at' => $db->created_at ? $db->created_at->toIso8601String() : null,
+            ];
+        });
+
+        return $this->jsonResponse($response, ['databases' => $data]);
+    }
+
+    // API: Create a database for a specific account (WHMCS/Blesta)
+    public function createForAccount(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $accountId = (int) ($args['accountId'] ?? 0);
+        $user = \LogicPanel\Domain\User\User::find($accountId);
+
+        if (!$user) {
+            return $this->jsonResponse($response, ['error' => 'Account not found'], 404);
+        }
+
+        $data = $request->getParsedBody();
+        $dbType = $data['db_type'] ?? 'mysql';
+        $dbName = $data['db_name'] ?? '';
+
+        if (empty($dbName)) {
+            // Auto-generate name if not provided
+            $dbName = 'user_' . $accountId . '_' . substr(md5((string) time()), 0, 6);
+        }
+
+        try {
+            // Create via provisioner service
+            $result = match ($dbType) {
+                'mysql' => $this->provisionerService->createMySQLDatabase($accountId, $dbName),
+                'postgresql' => $this->provisionerService->createPostgreSQLDatabase($accountId, $dbName),
+                'mongodb' => $this->provisionerService->createMongoDBDatabase($accountId, $dbName),
+                default => throw new \InvalidArgumentException("Unsupported database type: $dbType"),
+            };
+
+            return $this->jsonResponse($response, [
+                'result' => 'success',
+                'message' => 'Database created successfully',
+                'database' => $result
+            ], 201);
+        } catch (\Exception $e) {
+            return $this->jsonResponse($response, ['error' => 'Failed to create database: ' . $e->getMessage()], 500);
+        }
+    }
+
     private function jsonResponse(ResponseInterface $response, array $data, int $status = 200): ResponseInterface
     {
         $response->getBody()->write(json_encode($data));

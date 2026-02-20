@@ -9,6 +9,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use LogicPanel\Domain\User\ApiKey;
+use LogicPanel\Domain\User\User;
 
 class ApiTokenMiddleware implements MiddlewareInterface
 {
@@ -16,22 +17,22 @@ class ApiTokenMiddleware implements MiddlewareInterface
         ServerRequestInterface $request,
         RequestHandlerInterface $handler
     ): ResponseInterface {
-        // Get API token from header
+        // Get API token from header (supports both Bearer and X-API-Key)
         $authHeader = $request->getHeaderLine('Authorization');
-        $apiKey = null;
+        $apiToken = null;
 
         if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $apiKey = $matches[1];
+            $apiToken = $matches[1];
         } elseif ($request->hasHeader('X-API-Key')) {
-            $apiKey = $request->getHeaderLine('X-API-Key');
+            $apiToken = $request->getHeaderLine('X-API-Key');
         }
 
-        if (!$apiKey) {
-            return $this->unauthorizedResponse('API key required');
+        if (!$apiToken) {
+            return $this->unauthorizedResponse('API key required. Use X-API-Key header or Bearer token.');
         }
 
-        // Validate API key
-        $key = ApiKey::where('key', $apiKey)
+        // Validate API key — use correct column name 'api_key'
+        $key = ApiKey::where('api_key', $apiToken)
             ->where('status', 'active')
             ->first();
 
@@ -44,14 +45,27 @@ class ApiTokenMiddleware implements MiddlewareInterface
             return $this->unauthorizedResponse('API key expired');
         }
 
-        // Update last used
+        // Load the associated user — controllers read $request->getAttribute('user')
+        $user = User::find($key->user_id);
+        if (!$user) {
+            return $this->unauthorizedResponse('API key owner not found');
+        }
+
+        // Block suspended/terminated users from using API
+        if ($user->status !== 'active') {
+            return $this->unauthorizedResponse('Account is ' . $user->status . '. API access denied.');
+        }
+
+        // Track usage
         $key->last_used_at = date('Y-m-d H:i:s');
+        $key->last_used_ip = $_SERVER['REMOTE_ADDR'] ?? null;
+        $key->usage_count = ($key->usage_count ?? 0) + 1;
         $key->save();
 
-        // Add user info to request
+        // Set request attributes — 'user' is what all controllers expect
+        $request = $request->withAttribute('user', $user);
         $request = $request->withAttribute('api_key_id', $key->id);
         $request = $request->withAttribute('user_id', $key->user_id);
-        $request = $request->withAttribute('api_user', $key->user);
 
         return $handler->handle($request);
     }
@@ -60,6 +74,7 @@ class ApiTokenMiddleware implements MiddlewareInterface
     {
         $response = new \Slim\Psr7\Response();
         $response->getBody()->write(json_encode([
+            'result' => 'error',
             'error' => 'Unauthorized',
             'message' => $message
         ]));

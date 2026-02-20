@@ -199,6 +199,12 @@ if ($path === '' || $path === 'index.php' || $path === 'dashboard') {
     $current_page = 'profile';
     include $tplDir . '/settings/profile.php';
 
+} elseif (strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false || strpos($_SERVER['REQUEST_URI'] ?? '', '/v1/api/') !== false) {
+    // API Fallback for when .htaccess is bypassed (nginx, etc.)
+    $_SERVER['SCRIPT_NAME'] = '/public/api.php';
+    require __DIR__ . '/public/api.php';
+    exit;
+
 } else {
     // 404
     include $sharedDir . '/errors/404.php';

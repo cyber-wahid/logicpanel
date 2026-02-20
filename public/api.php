@@ -191,6 +191,25 @@ $container->set(\LogicPanel\Application\Controllers\Master\DomainController::cla
     return new \LogicPanel\Application\Controllers\Master\DomainController();
 });
 
+// DI for API Token Middleware and controllers used by API routes (routes_api.php)
+$container->set(\LogicPanel\Application\Middleware\ApiTokenMiddleware::class, function () {
+    return new \LogicPanel\Application\Middleware\ApiTokenMiddleware();
+});
+
+$container->set(\LogicPanel\Application\Controllers\Master\PackageController::class, function () {
+    return new \LogicPanel\Application\Controllers\Master\PackageController();
+});
+
+$container->set(\LogicPanel\Application\Controllers\Master\DatabaseController::class, function ($container) {
+    return new \LogicPanel\Application\Controllers\Master\DatabaseController(
+        $container->get(DatabaseProvisionerService::class)
+    );
+});
+
+$container->set(\LogicPanel\Application\Controllers\Master\ApiKeyController::class, function () {
+    return new \LogicPanel\Application\Controllers\Master\ApiKeyController();
+});
+
 $container->set(LogicPanel\Application\Controllers\CronController::class, function ($container) {
     return new LogicPanel\Application\Controllers\CronController($container->get(DockerService::class));
 });
@@ -208,9 +227,12 @@ $scriptPath = dirname(dirname($_SERVER['SCRIPT_NAME'])); // Gets parent of /publ
 $basePath = ($scriptPath === '/' || $scriptPath === '\\') ? '' : $scriptPath;
 $basePath = rtrim($basePath, '/');
 
-// Detect if request came from /api/ or /public/api/
+// Detect request origin to set correct Slim base path
 $requestUri = $_SERVER['REQUEST_URI'] ?? '';
-if (strpos($requestUri, '/api/') !== false && strpos($requestUri, '/public/api/') === false) {
+if (strpos($requestUri, '/v1/api/') !== false) {
+    // External API request (WHMCS/Blesta): empty base path so Slim sees /v1/api/...
+    $app->setBasePath('');
+} elseif (strpos($requestUri, '/api/') !== false && strpos($requestUri, '/public/api/') === false) {
     // Request came from /api/, set base path accordingly
     $app->setBasePath($basePath . '/api');
 } else {

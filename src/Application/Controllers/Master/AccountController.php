@@ -669,6 +669,46 @@ class AccountController
         }
     }
 
+    // API: Change Password by Account ID (for WHMCS/Blesta)
+    public function changePasswordById(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $id = $args['id'] ?? null;
+        $data = $request->getParsedBody();
+        $password = $data['password'] ?? '';
+
+        if (empty($password)) {
+            return $this->jsonResponse($response, ['result' => 'error', 'message' => 'Password is required'], 400);
+        }
+
+        $passwordError = $this->validatePasswordComplexity($password);
+        if ($passwordError) {
+            return $this->jsonResponse($response, ['result' => 'error', 'message' => $passwordError], 400);
+        }
+
+        $currentUser = $request->getAttribute('user');
+        $user = $this->findUserWithPermission($id, $currentUser);
+
+        if (!$user) {
+            return $this->jsonResponse($response, ['result' => 'error', 'message' => 'User not found'], 404);
+        }
+
+        try {
+            // System Password Change
+            try {
+                $this->systemBridge->changePassword($user->username, $password);
+            } catch (\Exception $e) {
+                // Allow continue if system user doesn't exist (Docker mode)
+            }
+
+            $user->setPassword($password);
+            $user->save();
+
+            return $this->jsonResponse($response, ['result' => 'success', 'message' => 'Password changed successfully']);
+        } catch (\Exception $e) {
+            return $this->jsonResponse($response, ['result' => 'error', 'message' => 'Failed to change password: ' . $e->getMessage()], 500);
+        }
+    }
+
 
     private function jsonResponse(ResponseInterface $response, array $data, int $status = 200): ResponseInterface
     {

@@ -196,6 +196,83 @@ class ServiceController
         return $this->jsonResponse($response, ['message' => "Bulk action '$action' completed", 'results' => $results]);
     }
 
+    // API: List services for a specific account (WHMCS/Blesta)
+    public function listForAccount(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $accountId = (int) ($args['accountId'] ?? 0);
+        $user = \LogicPanel\Domain\User\User::find($accountId);
+
+        if (!$user) {
+            return $this->jsonResponse($response, ['error' => 'Account not found'], 404);
+        }
+
+        $services = Service::where('user_id', $accountId)->get();
+
+        $data = $services->map(function ($svc) {
+            return [
+                'id' => $svc->id,
+                'name' => $svc->name,
+                'type' => $svc->type,
+                'status' => $svc->status,
+                'container_id' => $svc->container_id,
+                'domain' => $svc->domain,
+                'created_at' => $svc->created_at ? $svc->created_at->toIso8601String() : null,
+            ];
+        });
+
+        return $this->jsonResponse($response, ['services' => $data]);
+    }
+
+    // API: Create a service for a specific account (WHMCS/Blesta)
+    public function createForAccount(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $accountId = (int) ($args['accountId'] ?? 0);
+        $user = \LogicPanel\Domain\User\User::find($accountId);
+
+        if (!$user) {
+            return $this->jsonResponse($response, ['error' => 'Account not found'], 404);
+        }
+
+        $data = $request->getParsedBody();
+        $name = $data['name'] ?? '';
+        $type = $data['type'] ?? 'nodejs';
+
+        if (empty($name)) {
+            return $this->jsonResponse($response, ['error' => 'Service name is required'], 400);
+        }
+
+        try {
+            $service = new Service();
+            $service->user_id = $accountId;
+            $service->name = $name;
+            $service->type = $type;
+            $service->domain = $data['domain'] ?? null;
+            $service->status = 'creating';
+            $service->node_version = $data['node_version'] ?? '20';
+            $service->python_version = $data['python_version'] ?? '3.11';
+            $service->install_command = $data['install_command'] ?? 'npm install';
+            $service->build_command = $data['build_command'] ?? '';
+            $service->start_command = $data['start_command'] ?? 'npm start';
+            $service->cpu_limit = $data['cpu_limit'] ?? 0.50;
+            $service->memory_limit = $data['memory_limit'] ?? '512M';
+            $service->disk_limit = $data['disk_limit'] ?? '1G';
+            $service->save();
+
+            return $this->jsonResponse($response, [
+                'result' => 'success',
+                'message' => 'Service created successfully',
+                'service' => [
+                    'id' => $service->id,
+                    'name' => $service->name,
+                    'type' => $service->type,
+                    'status' => $service->status,
+                ]
+            ], 201);
+        } catch (\Exception $e) {
+            return $this->jsonResponse($response, ['error' => 'Failed to create service: ' . $e->getMessage()], 500);
+        }
+    }
+
     private function jsonResponse(ResponseInterface $response, array $data, int $status = 200): ResponseInterface
     {
         $response->getBody()->write(json_encode($data));
