@@ -120,7 +120,6 @@ services:
       - JWT_SECRET=${JWT_SECRET}
     volumes:
       - .:/var/www/html
-      - .ssh:/var/www/html/.ssh:ro
     networks:
       - logicpanel_internal
     # security_opt:
@@ -158,6 +157,7 @@ services:
       - "3002"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - .ssh:/app/.ssh:ro
     environment:
       - JWT_SECRET=${JWT_SECRET}
     networks:

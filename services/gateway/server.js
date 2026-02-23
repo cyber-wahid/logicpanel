@@ -2,6 +2,9 @@ const WebSocket = require('ws');
 const pty = require('node-pty');
 const jwt = require('jsonwebtoken');
 const { spawn } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 const PORT = 3002;
 const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
@@ -32,14 +35,39 @@ wss.on('connection', (ws) => {
                 let args = [];
 
                 if (mode === 'root') {
-                     // Root Terminal: Spawn local shell in Gateway container (which has docker socket)
-                     shell = 'bash'; 
-                     args = [];
-                     // Optional: Set specific CWD or env vars for root
+                    // Root Terminal: Use SSH to jump to host root
+                    const hostIp = process.env.HOST_IP || '172.17.0.1';
+                    const keyPath = '/app/.ssh/id_rsa';
+
+                    // Diagnostic: Check if SSH binary and Key exist
+                    const sshBinary = '/usr/bin/ssh';
+                    if (!fs.existsSync(sshBinary)) {
+                        ws.send("\r\n\x1b[31m[ERROR] SSH client NOT found in container.\x1b[0m\r\n");
+                        ws.send("\x1b[33m[FIX] Please run: \x1b[1mdocker compose up -d --build terminal-gateway\x1b[0m\r\n");
+                        ws.send("\x1b[32mFalling back to container shell...\x1b[0m\r\n\r\n");
+                        shell = 'bash';
+                        args = [];
+                    } else if (!fs.existsSync(keyPath)) {
+                        ws.send(`\r\n\x1b[31m[ERROR] SSH Key not found at ${keyPath}\r\n`);
+                        ws.send("\x1b[32mFalling back to container shell...\x1b[0m\r\n\r\n");
+                        shell = 'bash';
+                        args = [];
+                    } else {
+                        shell = sshBinary;
+                        args = [
+                            '-i', keyPath,
+                            '-o', 'StrictHostKeyChecking=no',
+                            '-o', 'UserKnownHostsFile=/dev/null',
+                            '-o', 'LogLevel=ERROR',
+                            `root@${hostIp}`
+                        ];
+                        console.log(`Spawning host terminal via: ${shell} ${args.join(' ')}`);
+                    }
                 } else {
-                     // User App Terminal: Docker Exec into container
-                     shell = 'docker';
-                     args = [
+                    // User App Terminal: Docker Exec into container
+                    const dockerBinary = '/usr/bin/docker';
+                    shell = fs.existsSync(dockerBinary) ? dockerBinary : 'docker';
+                    args = [
                         'exec', '-it',
                         '-e', 'TERM=xterm-256color',
                         '-w', `/storage/service_${service_id}`,
@@ -49,13 +77,19 @@ wss.on('connection', (ws) => {
                 }
 
                 // Spawn PTY
-                ptyProcess = pty.spawn(shell, args, {
-                    name: 'xterm-256color',
-                    cols: 80,
-                    rows: 24,
-                    cwd: process.env.HOME,
-                    env: process.env
-                });
+                try {
+                    ptyProcess = pty.spawn(shell, args, {
+                        name: 'xterm-256color',
+                        cols: 80,
+                        rows: 24,
+                        cwd: process.env.HOME || '/tmp',
+                        env: process.env
+                    });
+                } catch (spawnErr) {
+                    ws.send(`\r\n\x1b[31m[FATAL] Failed to spawn ${shell}: ${spawnErr.message}\x1b[0m\r\n`);
+                    ws.close();
+                    return;
+                }
 
                 console.log(`[Service ${service_id}] PTY spawned with PID ${ptyProcess.pid}`);
 
@@ -76,7 +110,7 @@ wss.on('connection', (ws) => {
 
             } catch (e) {
                 console.log('Auth failed:', e.message);
-                ws.send('\r\n\x1b[31mAuthentication Failed\x1b[0m\r\n');
+                ws.send(`\r\n\x1b[31mAuthentication Failed: ${e.message}\x1b[0m\r\n`);
                 ws.close();
             }
             return;

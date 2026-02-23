@@ -31,25 +31,10 @@ wss.on('connection', (ws, req) => {
 
     console.log('Client connected with token');
 
-    // Use SSH to jump to host root
-    // We assume the host is reachable at 172.17.0.1 (default Docker bridge)
-    // or we can use the environment variable if provided.
-    const hostIp = process.env.HOST_IP || '172.17.0.1';
-    const keyPath = path.join(__dirname, '../../../../.ssh/id_rsa');
-
-    const shell = 'ssh';
-    const args = [
-        '-i', keyPath,
-        '-o', 'StrictHostKeyChecking=no',
-        '-o', 'UserKnownHostsFile=/dev/null',
-        '-o', 'LogLevel=ERROR',
-        `root@${hostIp}`
-    ];
-
-    console.log(`Spawning host terminal via: ${shell} ${args.join(' ')}`);
+    const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash';
 
     // Spawn a new pty process
-    const ptyProcess = pty.spawn(shell, args, {
+    const ptyProcess = pty.spawn(shell, [], {
         name: 'xterm-color',
         cols: 80,
         rows: 30,
