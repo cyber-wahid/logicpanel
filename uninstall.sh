@@ -109,36 +109,80 @@ for container in $USER_CONTAINERS; do
     log_success "Removed user container: $container"
 done
 
-# --- 3. Remove LogicPanel Directory ---
+# --- 3. Remove LogicPanel Directory & Data ---
 if [ -d "$INSTALL_DIR" ]; then
-    log_info "Removing LogicPanel files..."
+    log_info "Stopping services and cleaning up files..."
+    cd "$INSTALL_DIR"
     
-    # Stop any remaining compose services
-    (cd "$INSTALL_DIR" && docker compose down -v 2>/dev/null || true)
-    
-    rm -rf "$INSTALL_DIR"
-    log_success "LogicPanel files removed."
+    # Check if user wants deep cleanup
+    read -p "--- Do you want to delete ALL database data and user files? (y/N): " DEEP_CLEAN < /dev/tty
+    if [[ "$DEEP_CLEAN" =~ ^[Yy]$ ]]; then
+        log_warn "Executing deep cleanup (removing volumes)..."
+        docker compose down -v 2>/dev/null || true
+        # Safety confirm for the actual directory
+        read -p "--- FINAL WARNING: Delete $INSTALL_DIR? (y/N): " FINAL_CONFIRM < /dev/tty
+        if [[ "$FINAL_CONFIRM" =~ ^[Yy]$ ]]; then
+            rm -rf "$INSTALL_DIR"
+            log_success "LogicPanel directory and data removed."
+        fi
+    else
+        docker compose down 2>/dev/null || true
+        log_info "Keeping $INSTALL_DIR for data preservation."
+    fi
 else
     log_warn "LogicPanel directory not found at $INSTALL_DIR."
 fi
 
 # --- 4. Remove Docker Networks ---
 log_info "Cleaning up Docker networks..."
+# Get all logical networks from compose file if exists
+if [ -f "$INSTALL_DIR/.env" ]; then
+    source "$INSTALL_DIR/.env"
+    if [ -n "$DOCKER_NETWORK" ]; then
+        docker network rm "$DOCKER_NETWORK" 2>/dev/null || true
+    fi
+fi
 docker network rm logicpanel_internal 2>/dev/null || true
-docker network rm panel_logicpanel_internal 2>/dev/null || true
 
 # --- 5. Remove Cron Jobs ---
 log_info "Removing LogicPanel cron jobs..."
-crontab -l 2>/dev/null | grep -v "fix-ssl.sh" | grep -v "logicpanel" | crontab - 2>/dev/null || true
+crontab -l 2>/dev/null | grep -v "logicpanel" | grep -v "fix-ssl.sh" | crontab - 2>/dev/null || true
 log_success "Cron jobs removed."
 
-# --- 6. Clean up Docker ---
-read -p "Do you want to remove unused Docker images and volumes? (y/N): " CLEANUP_CONFIRM < /dev/tty
-if [[ "$CLEANUP_CONFIRM" =~ ^[Yy]$ ]]; then
-    log_info "Cleaning Docker system..."
-    docker system prune -f 2>/dev/null || true
-    docker volume prune -f 2>/dev/null || true
-    log_success "Docker cleanup complete."
+# --- 6. Firewall Cleanup ---
+read -p "--- Do you want to remove LogicPanel firewall rules? (y/N): " FW_CLEAN < /dev/tty
+if [[ "$FW_CLEAN" =~ ^[Yy]$ ]]; then
+    log_info "Cleaning up firewall rules..."
+    if command -v ufw &> /dev/null; then
+        $SUDO ufw delete allow 80/tcp 2>/dev/null || true
+        $SUDO ufw delete allow 443/tcp 2>/dev/null || true
+        $SUDO ufw delete allow 7777/tcp 2>/dev/null || true
+        $SUDO ufw delete allow 9999/tcp 2>/dev/null || true
+    elif command -v firewall-cmd &> /dev/null; then
+        $SUDO firewall-cmd --permanent --remove-port=80/tcp 2>/dev/null || true
+        $SUDO firewall-cmd --permanent --remove-port=443/tcp 2>/dev/null || true
+        $SUDO firewall-cmd --permanent --remove-port=7777/tcp 2>/dev/null || true
+        $SUDO firewall-cmd --permanent --remove-port=9999/tcp 2>/dev/null || true
+        $SUDO firewall-cmd --reload 2>/dev/null || true
+    fi
+    log_success "Firewall rules removed."
+fi
+
+# --- 7. Dependency Removal (Docker) ---
+read -p "--- Do you want to UNINSTALL Docker and Docker Compose? (y/N): " DOCKER_CLEAN < /dev/tty
+if [[ "$DOCKER_CLEAN" =~ ^[Yy]$ ]]; then
+    log_warn "Uninstalling Docker components..."
+    if command -v apt-get &> /dev/null; then
+        $SUDO apt-get purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-ce-rootless-extras
+        $SUDO rm -rf /var/lib/docker
+        $SUDO rm -rf /var/lib/containerd
+    elif command -v dnf &> /dev/null || command -v yum &> /dev/null; then
+        PKG_MANAGER=$(command -v dnf &> /dev/null && echo "dnf" || echo "yum")
+        $SUDO $PKG_MANAGER remove -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+        $SUDO rm -rf /var/lib/docker
+        $SUDO rm -rf /var/lib/containerd
+    fi
+    log_success "Docker uninstalled."
 fi
 
 # --- Success Message ---

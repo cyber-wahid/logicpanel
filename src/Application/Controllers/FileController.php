@@ -229,8 +229,9 @@ class FileController
 
         // Check file extension
         $filename = $uploadedFile->getClientFilename();
-        $extension = pathinfo($filename, PATHINFO_EXTENSION);
-        if (!in_array(strtolower($extension), $this->allowedExtensions)) {
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        // Allow files without extensions (e.g. .env, Dockerfile, etc)
+        if (!empty($extension) && !in_array($extension, $this->allowedExtensions)) {
             return $this->jsonResponse($response, ['error' => 'File type not allowed: ' . $extension], 400);
         }
 
@@ -290,9 +291,10 @@ class FileController
         }
 
         // Check file extension
-        $extension = pathinfo($fullPath, PATHINFO_EXTENSION);
-        if (!in_array($extension, $this->allowedExtensions)) {
-            return $this->jsonResponse($response, ['error' => 'File type not allowed'], 400);
+        $extension = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+        // Allow files without extensions (e.g. .env, Dockerfile, etc)
+        if (!empty($extension) && !in_array($extension, array_map('strtolower', $this->allowedExtensions))) {
+            return $this->jsonResponse($response, ['error' => 'File type not allowed: ' . ($extension ?: 'none')], 400);
         }
 
         // Check file size
@@ -315,6 +317,10 @@ class FileController
             ]);
 
         } catch (\Exception $e) {
+            // Log the error for debugging
+            $logFile = sys_get_temp_dir() . '/logicpanel_file_error.log';
+            file_put_contents($logFile, date('Y-m-d H:i:s') . " [Update] - Path: $path - " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n", FILE_APPEND);
+
             return $this->jsonResponse($response, [
                 'error' => 'Failed to update file',
                 'message' => $e->getMessage(),
@@ -931,7 +937,7 @@ class FileController
     {
         // 1. Resolve real paths
         $realBase = realpath($basePath);
-        
+
         // Standardize slashes for comparison
         if ($realBase) {
             $realBase = str_replace('\\', '/', $realBase);
@@ -952,7 +958,7 @@ class FileController
                 return false;
             }
             $realParent = str_replace('\\', '/', $realParent);
-            
+
             // Parent must be inside base path (prefix check)
             $baseWithSlash = rtrim($realBase, '/') . '/';
             return ($realParent === $realBase || str_starts_with($realParent, $baseWithSlash));
@@ -973,9 +979,10 @@ class FileController
             $current .= '/' . $segment;
             if (is_link($current)) {
                 $linkTarget = realpath(readlink($current));
-                if ($linkTarget === false) return false;
+                if ($linkTarget === false)
+                    return false;
                 $linkTarget = str_replace('\\', '/', $linkTarget);
-                
+
                 if ($linkTarget !== $realBase && !str_starts_with($linkTarget, $baseWithSlash)) {
                     return false; // Symlink points outside base!
                 }

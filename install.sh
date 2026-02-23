@@ -6,15 +6,41 @@
 # Supports: Debian/Ubuntu (APT), RHEL/CentOS/AlmaLinux/Rocky/Fedora (DNF/YUM)
 # License: Proprietary
 
-# --- 0. Pre-Installation Checks ---
-# Ensure script is being run with bash
-if [ -z "$BASH_VERSION" ]; then
-    echo "[ERROR] This script must be run with bash. Try: curl ... | bash"
-    exit 1
+# --- 0. Screen Session Wrapper ---
+# This ensures the installation continues even if the SSH connection is lost.
+if [ -z "$STY" ]; then
+    log_info "Relaunching installer in a protected screen session (lp_installer)..."
+    
+    # Check if screen is installed
+    if ! command -v screen &> /dev/null; then
+        log_warn "Screen not found. Installing..."
+        if [ -f /etc/debian_version ]; then
+            sudo apt-get update && sudo apt-get install -y screen
+        elif [ -f /etc/redhat-release ]; then
+            sudo dnf install -y screen || sudo yum install -y screen
+        fi
+    fi
+    
+    # Relaunch script inside screen and attach immediately so user sees it
+    # We use -m to force a new session even if one exists, or -R to reattach
+    exec screen -S lp_installer -m bash "$0" "$@"
+    exit 0
 fi
 
-# If we reach here, we're inside screen or the user explicitly bypassed it
-# set -e # Disabled to allow better error handling
+# Ensure user is aware they are in a screen session
+log_success "Running inside screen session: lp_installer"
+
+# --- 1. Duplicate Installation Check ---
+if [ -d "$INSTALL_DIR" ]; then
+    log_warn "LogicPanel directory already exists at $INSTALL_DIR"
+    log_warn "Re-installing might OVERWRITE your existing configuration and data!"
+    echo ""
+    read -p "--- Do you REALLY want to proceed? (y/N): " CONFIRM_REINSTALL < /dev/tty
+    if [[ ! "$CONFIRM_REINSTALL" =~ ^[Yy]$ ]]; then
+        log_error "Installation cancelled to protect existing data."
+        exit 1
+    fi
+fi
 
 
 # --- Configuration ---
@@ -558,65 +584,6 @@ else
         fi
         sleep 1
     done
-    
-    DOCKER_VER=$(docker --version 2>/dev/null | grep -oP '\d+\.\d+\.\d+' | head -1)
-    log_success "Docker installed successfully (v${DOCKER_VER})."
-fi
-
-# Install Docker if not present
-install_docker() {
-    if ! command -v docker &> /dev/null; then
-        log_info "Docker not found. Installing..."
-        
-        # Install lsof for better port checking if available
-        if command -v apt-get &> /dev/null; then
-             $SUDO apt-get update && $SUDO apt-get install -y lsof
-        elif command -v yum &> /dev/null; then
-             $SUDO yum install -y lsof
-        fi
-
-        # Detect OS
-        if [ -f /etc/os-release ]; then
-            . /etc/os-release
-            log_info "Detected OS: ${PRETTY_NAME:-$ID}"
-        fi
-        
-        DOCKER_INSTALLED=false
-        OS_ID="${ID:-unknown}"
-        OS_ID_LIKE="${ID_LIKE:-}"
-        OS_VERSION_ID="${VERSION_ID:-}"
-        
-        # ── Remove conflicting packages (Podman, old Docker) ────────────
-        log_info "Removing conflicting packages..."
-        if command -v dnf &> /dev/null || command -v yum &> /dev/null; then
-            PKG_RM="${PKG_MANAGER:-yum}"
-            $SUDO $PKG_RM remove -y docker docker-client docker-client-latest docker-common \
-                docker-latest docker-latest-logrotate docker-logrotate docker-engine \
-                podman runc 2>/dev/null || true
-        elif command -v apt-get &> /dev/null; then
-            for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do
-                $SUDO apt-get remove -y $pkg 2>/dev/null || true
-            done
-        fi
-        
-        # ── Determine Docker repo URL based on distro ───────────────────
-        # Docker officially supports: ubuntu, debian, centos, rhel, fedora, sles
-        # Derivatives must map to their parent distro's repo
-        DOCKER_REPO_URL=""
-        REPO_METHOD=""
-        
-        case "$OS_ID" in
-            ubuntu|pop|linuxmint|elementary|zorin|kubuntu|lubuntu|xubuntu|neon)
-                DOCKER_REPO_URL="https://download.docker.com/linux/ubuntu"
-                REPO_METHOD="apt"
-                # Map derivatives to their Ubuntu base
-                if [ "$OS_ID" != "ubuntu" ]; then
-                    # Try to find the Ubuntu codename from os-release
-                    UBUNTU_CODENAME="${UBUNTU_CODENAME:-$(grep UBUNTU_CODENAME /etc/os-release 2>/dev/null | cut -d= -f2)}"
-                    [ -z "$UBUNTU_CODENAME" ] && UBUNTU_CODENAME="jammy"
-                fi
-                ;;
-            debian|raspbian|kali|bunsen*)
                 DOCKER_REPO_URL="https://download.docker.com/linux/debian"
                 REPO_METHOD="apt"
                 ;;
@@ -807,6 +774,7 @@ fi
 log_info "Step 3: Panel Setup (Interactive)"
 
 echo ""
+echo -e "${CYAN}--- Basic Configuration ---${NC}"
 read -p "--- Enter Hostname (e.g., panel.example.cloud): " PANEL_DOMAIN < /dev/tty
 while [[ -z "$PANEL_DOMAIN" ]]; do
     read -p "--- ! Hostname required: " PANEL_DOMAIN < /dev/tty
@@ -850,30 +818,22 @@ else
     log_warn "nslookup not available. Skipping DNS verification."
 fi
 
+echo ""
+echo -e "${CYAN}--- Administrator Account ---${NC}"
 RANDOM_ADMIN="admin_$(generate_random 5)"
-read -p "--- Enter Admin Username (default: $RANDOM_ADMIN): " ADMIN_USER < /dev/tty
+read -p "--- Admin Username (default: $RANDOM_ADMIN): " ADMIN_USER < /dev/tty
 ADMIN_USER=${ADMIN_USER:-$RANDOM_ADMIN}
 
-read -p "--- Enter Admin Email: " ADMIN_EMAIL < /dev/tty
+read -p "--- Admin Email: " ADMIN_EMAIL < /dev/tty
 while [[ -z "$ADMIN_EMAIL" ]]; do
     read -p "--- ! Email required: " ADMIN_EMAIL < /dev/tty
 done
 
-while true; do
-    read -s -p "--- Enter Admin Password (min 8 characters): " ADMIN_PASS < /dev/tty
-    echo ""
-    if [[ ${#ADMIN_PASS} -lt 8 ]]; then
-        echo -e "${RED}--- ! Password too short. Min 8 characters.${NC}"
-        continue
-    fi
-    read -s -p "--- Enter Admin Password Again: " ADMIN_PASS_CONFIRM < /dev/tty
-    echo ""
-    if [[ "$ADMIN_PASS" == "$ADMIN_PASS_CONFIRM" ]]; then
-        break
-    else
-        echo -e "${RED}--- ! Passwords do not match. Try again.${NC}"
-    fi
-done
+# Automated Alphanumeric Password Generation (e.g., sKRlzA42ZL51)
+# This avoids failures in admin account creation due to special characters or complexity issues.
+ADMIN_PASS=$(generate_random 12)
+log_success "Admin password generated: ${ADMIN_PASS}"
+log_info "Please SAVE this password. It will also be shown at the end."
 
 
 # Random Secrets for Security

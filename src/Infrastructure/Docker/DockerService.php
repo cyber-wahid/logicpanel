@@ -24,7 +24,7 @@ class DockerService
         // Use the network name passed from config (which comes from .env)
         // If empty, fallback to logicpanel_internal for backward compatibility
         $this->network = !empty($config['network']) ? $config['network'] : 'logicpanel_internal';
-        
+
         $this->userAppsPath = $config['user_apps_path'];
         // Docker Compose prepends project name to volume names
         $this->userAppsVolume = $config['user_apps_volume'] ?? 'logicpanel_logicpanel_user_apps';
@@ -37,18 +37,18 @@ class DockerService
     {
         // Use default if version not specified
         if (empty($version)) {
-            $version = ($appType === 'nodejs') 
-                ? $this->defaultNodeVersion 
+            $version = ($appType === 'nodejs')
+                ? $this->defaultNodeVersion
                 : $this->defaultPythonVersion;
         }
-        
+
         // Validate version
         if (!$this->validateRuntimeVersion($appType, $version)) {
             throw new \InvalidArgumentException(
                 "Unsupported {$appType} version: {$version}"
             );
         }
-        
+
         // Build image name
         if ($appType === 'nodejs') {
             return "node:{$version}-bookworm-slim";
@@ -91,12 +91,12 @@ class DockerService
     ): array {
         // Calculate Image based on Runtime Version
         if (empty($image) || !empty($runtimeVersion)) {
-             try {
-                 $image = $this->buildImageName($appType, $runtimeVersion);
-             } catch (\Exception $e) {
-                 // Fallback or log? For now let's just log and throw
-                 throw $e;
-             }
+            try {
+                $image = $this->buildImageName($appType, $runtimeVersion);
+            } catch (\Exception $e) {
+                // Fallback or log? For now let's just log and throw
+                throw $e;
+            }
         }
         $containerName = "logicpanel_app_{$name}";
         $appPath = $this->userAppsPath . "/{$name}";
@@ -119,235 +119,231 @@ class DockerService
                     throw new \RuntimeException("Failed to create app directory: $appPath - $errorMsg");
                 }
 
-                // Ensure ownership is correct (Security Fix: use sudo to handle host-mounted volumes)
-                // This is critical since the container will run as 1000:1000
-                @exec("sudo chown -R 1000:1000 " . escapeshellarg($appPath));
-                @exec("sudo chmod -R 775 " . escapeshellarg($appPath));
             }
 
-        // Initialize App Content
-        if (!empty($githubRepo)) {
-            $this->cloneGitHubRepo($appPath, $githubRepo, $githubBranch);
-        } else {
-            // Create starter app (no longer needs port)
-            $this->createStarterApp($appPath, $appType, $domain);
-        }
-
-        // Get host path from environment variable, or fallback to default relative
-        $hostPath = $_ENV['USER_APPS_HOST_PATH'] ?? realpath(__DIR__ . '/../../../storage/user-apps') ?: '/var/www/html/storage/user-apps';
-
-        // Sanitize name for Traefik router name
-        $routerName = preg_replace('/[^a-zA-Z0-9-]/', '-', $name);
-
-        // Validate and Sanitize Domains for Traefik Labels
-        $domains = array_filter(array_map('trim', explode(',', $domain)));
-        $validDomains = [];
-        foreach ($domains as $d) {
-            // Strict validation: only alphanumeric, dots, hyphens
-            if (preg_match('/^[a-zA-Z0-9.-]+$/', $d)) {
-                $validDomains[] = $d;
-            }
-        }
-
-        if (empty($validDomains)) {
-            // Fallback or throw error? For now fallback to a safe default if provided was bad
-            // or just use what we have if it passed regex (it won't if empty)
-            // If $domain was malicious, $validDomains is empty.
-            // We should probably throw exception if no valid domain found?
-            // But existing code might rely on loose validation.
-            // safe fallback:
-            $validDomains[] = 'localhost';
-        }
-
-        $hostRules = array_map(fn($d) => "Host(`{$d}`)", $validDomains);
-        $traefikRule = implode(' || ', $hostRules);
-
-        // App type-specific port (Node.js: 3000, Python: 5000)
-        $containerPort = ($appType === 'python') ? '5000' : '3000';
-
-        // Resource Management: Shared/Burstable Model
-        // 1. Memory: Reserve package limit (Soft), but allow bursting up to 4x (Hard)
-        // 2. CPU: Allow bursting up to 4 cores, but prioritize based on package limit (Shares)
-
-        $memVal = (int) $memoryLimit;
-        $memUnit = strtoupper(substr($memoryLimit, -1));
-        $memBytes = $memVal * ($memUnit === 'G' ? 1024 : 1) * 1024 * 1024;
-
-        // Hard Limit = 1.5x Package Limit (shared hosting - prevents resource abuse)
-        $burstMemBytes = $memBytes * 1.5;
-        $burstMemLimit = ((int) ($burstMemBytes / (1024 * 1024))) . 'M';
-
-        // CPU Shares (Weight): 1 Core = 1024 shares. Package limit defines weight.
-        // e.g., 0.5 core package = 512 shares.
-        $cpuShares = (int) ($cpuLimit * 1024);
-
-        // Get available CPU count from system (default to 2 if detection fails)
-        $availableCpus = 2;
-        if (is_readable('/proc/cpuinfo')) {
-            $cpuinfo = file_get_contents('/proc/cpuinfo');
-            $availableCpus = max(1, substr_count($cpuinfo, 'processor'));
-        }
-        // Ensure correct ownership for the mounted volume before docker run
-        // This fixes EACCES errors for npm install and pip install when files are created by PHP/root.
-        @exec("sudo chown -R 1000:1000 " . escapeshellarg($appPath));
-        @exec("sudo chmod -R 775 " . escapeshellarg($appPath));
-
-        // Max CPU Burst: 1.5x package limit, capped at available CPUs
-        // Shared hosting - prevents resource abuse
-        $cpuBurst = min($availableCpus, $cpuLimit * 1.5);
-
-        $command = [
-            'docker',
-            'run',
-            '-d',
-            '--name',
-            $containerName,
-            '--user',
-            '1000:1000', // Run as non-root user (Security Fix)
-            '--network',
-            $this->network,
-            '-v',
-            "{$hostPath}:/storage",
-            '-w',
-            "/storage/{$name}",
-
-            // --- Shared Resource Limits ---
-            '--memory-reservation',
-            $memoryLimit,   // Soft Limit (Guaranteed)
-            '--memory',
-            $burstMemLimit,             // Hard Limit (Burst Max)
-            '--cpus',
-            (string) $cpuBurst,           // CPU Burst Max
-            '--cpu-shares',
-            (string) $cpuShares,    // CPU Weight/Priority
-            '--restart',
-            'unless-stopped',
-
-            // Labels
-            '--label',
-            'traefik.enable=true',
-            '--label',
-            "traefik.http.routers.{$routerName}.rule={$traefikRule}",
-            '--label',
-            "traefik.http.routers.{$routerName}.entrypoints=websecure",
-            '--label',
-            "traefik.http.routers.{$routerName}.tls=true",
-            '--label',
-            "traefik.http.routers.{$routerName}.tls.certresolver=letsencrypt",
-            '--label',
-            "traefik.http.services.{$routerName}.loadbalancer.server.port={$containerPort}",
-        ];
-
-        // Add environment variables (containerPort already defined above)
-        $envVars['PORT'] = $containerPort;
-        $envVars['HOST'] = '0.0.0.0';  // Important for Flask apps
-        $envVars['PYTHONUNBUFFERED'] = '1'; // Important for Python logging
-        $envVars['FLASK_RUN_HOST'] = '0.0.0.0'; 
-        $envVars['FLASK_RUN_PORT'] = $containerPort;
-        $envVars['APP_DOMAIN'] = $domain;  // App's assigned domain
-        $envVars['PS1'] = "root@{$containerName}:~# "; // Terminal Prompt
-        
-        // Inject Python-specific path overrides globally so terminal sessions work without permission issues
-        if ($appType === 'python') {
-            $envVars['HOME'] = '/tmp';
-            $envVars['XDG_CACHE_HOME'] = '/tmp/.cache';
-            $envVars['PYTHONUSERBASE'] = '/tmp/.local';
-            $envVars['PATH'] = '/tmp/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
-        }
-
-        foreach ($envVars as $key => $value) {
-            $command[] = '-e';
-            $command[] = "{$key}={$value}";
-        }
-
-        // Add image and start command based on type
-        $command[] = $image;
-
-        if ($appType === 'nodejs') {
-            $command[] = 'sh';
-            $command[] = '-c';
-            // Sequential command execution with proper error handling
-            // 1. Fix permissions first
-            // 2. cd to root directory if specified (for monorepos)
-            // 3. Run install (wait for completion)
-            // 4. Run post-install if specified (migrations, etc.)
-            // 5. Run build if specified (wait for completion)
-            // 6. Start the app
-            // Using && ensures each step must succeed before proceeding
-            $install = !empty($installCommand) ? $installCommand : 'npm install --prefer-offline --no-audit --no-fund 2>&1 || echo "npm install failed, continuing anyway"';
-            $postInstall = !empty($postInstallCommand) ? $postInstallCommand : '';
-            $build = !empty($buildCommand) ? $buildCommand : '';
-            // Smart start: npm start reads package.json, fallback to common entry points
-            $start = !empty($startCommand) ? $startCommand : 'npm start 2>/dev/null || node index.js 2>/dev/null || node server.js 2>/dev/null || node app.js';
-
-            // Build the command chain with proper sequencing
-            $cmdChain = 'echo "=== Deployment Started ===" && ';
-            $cmdChain .= 'chown -R 1000:1000 . 2>/dev/null; '; // Fix permissions at start (use ; not && so we continue)
-
-            // Change to root directory if specified (for monorepos)
-            if (!empty($rootDirectory) && $rootDirectory !== './' && $rootDirectory !== '.') {
-                $cmdChain .= 'echo "=== Changing to root directory: ' . escapeshellarg($rootDirectory) . ' ===" && ';
-                $cmdChain .= 'cd ' . escapeshellarg($rootDirectory) . ' && ';
-            }
-
-            // Use timeout for install to prevent hanging 
-            $cmdChain .= 'echo "=== Running install ===" && ';
-            $cmdChain .= 'timeout 1200 sh -c ' . escapeshellarg('export NPM_CONFIG_PRODUCTION=false; ' . $install) . ' || echo "Install timed out or failed, continuing"; ';
-
-            // Post-install command
-            if (!empty($postInstall)) {
-                $cmdChain .= 'echo "=== Running post-install ===" && ';
-                $cmdChain .= 'timeout 600 sh -c ' . escapeshellarg($postInstall) . ' || echo "Post-install failed, continuing"; ';
-            }
-
-            if (!empty($build)) {
-                $cmdChain .= 'echo "=== Running build ===" && ';
-                $cmdChain .= 'timeout 600 sh -c ' . escapeshellarg($build) . ' || echo "Build failed, continuing"; ';
-            }
-
-            $cmdChain .= 'echo "=== Starting app ===" && ';
-            $cmdChain .= $start;
-
-            // If the app crashes, keep container alive for debugging
-            $command[] = $cmdChain . ' || (echo "=== Process failed, keeping container alive for debugging ===" && tail -f /dev/null)';
-        } else {
-            $command[] = 'sh';
-            $command[] = '-c';
-            
-            // --- Improved Python Deployment Logic ---
-            
-            // 1. Setup Python environment and install command
-            // We use /tmp/.local for PYTHONUSERBASE to avoid permission issues if the volume is mounted read-only for uid 1000
-            $envSetup = 'export HOME=/tmp; export XDG_CACHE_HOME=/tmp/.cache; export PYTHONUSERBASE=/tmp/.local; export PATH=$PYTHONUSERBASE/bin:$PATH; ';
-            // Install essential build tools (setuptools<70 for pkg_resources compatibility with older packages)
-            $baseInstall = $envSetup . 'pip install --user --upgrade "pip<24.1" "setuptools<70" wheel 2>/dev/null; pip install --user --no-cache-dir flask gunicorn uvicorn django 2>/dev/null || echo "Base dependencies install failed"';
-
-            
-            $userInstall = !empty($installCommand) ? $installCommand : '';
-            
-            // Smart Install Chain
-            $installChain = $baseInstall . '; ';
-            
-            if (!empty($userInstall)) {
-                $installChain .= $envSetup . $userInstall;
+            // Initialize App Content
+            if (!empty($githubRepo)) {
+                $this->cloneGitHubRepo($appPath, $githubRepo, $githubBranch);
             } else {
-                $installChain .= $envSetup . '
+                // Create starter app (no longer needs port)
+                $this->createStarterApp($appPath, $appType, $domain);
+            }
+
+            // Get host path from environment variable, or fallback to default relative
+            $hostPath = $_ENV['USER_APPS_HOST_PATH'] ?? realpath(__DIR__ . '/../../../storage/user-apps') ?: '/var/www/html/storage/user-apps';
+
+            // Sanitize name for Traefik router name
+            $routerName = preg_replace('/[^a-zA-Z0-9-]/', '-', $name);
+
+            // Validate and Sanitize Domains for Traefik Labels
+            $domains = array_filter(array_map('trim', explode(',', $domain)));
+            $validDomains = [];
+            foreach ($domains as $d) {
+                // Strict validation: only alphanumeric, dots, hyphens
+                if (preg_match('/^[a-zA-Z0-9.-]+$/', $d)) {
+                    $validDomains[] = $d;
+                }
+            }
+
+            if (empty($validDomains)) {
+                // Fallback or throw error? For now fallback to a safe default if provided was bad
+                // or just use what we have if it passed regex (it won't if empty)
+                // If $domain was malicious, $validDomains is empty.
+                // We should probably throw exception if no valid domain found?
+                // But existing code might rely on loose validation.
+                // safe fallback:
+                $validDomains[] = 'localhost';
+            }
+
+            $hostRules = array_map(fn($d) => "Host(`{$d}`)", $validDomains);
+            $traefikRule = implode(' || ', $hostRules);
+
+            // App type-specific port (Node.js: 3000, Python: 5000)
+            $containerPort = ($appType === 'python') ? '5000' : '3000';
+
+            // Resource Management: Shared/Burstable Model
+            // 1. Memory: Reserve package limit (Soft), but allow bursting up to 4x (Hard)
+            // 2. CPU: Allow bursting up to 4 cores, but prioritize based on package limit (Shares)
+
+            $memVal = (int) $memoryLimit;
+            $memUnit = strtoupper(substr($memoryLimit, -1));
+            $memBytes = $memVal * ($memUnit === 'G' ? 1024 : 1) * 1024 * 1024;
+
+            // Hard Limit = 1.5x Package Limit (shared hosting - prevents resource abuse)
+            $burstMemBytes = $memBytes * 1.5;
+            $burstMemLimit = ((int) ($burstMemBytes / (1024 * 1024))) . 'M';
+
+            // CPU Shares (Weight): 1 Core = 1024 shares. Package limit defines weight.
+            // e.g., 0.5 core package = 512 shares.
+            $cpuShares = (int) ($cpuLimit * 1024);
+
+            // Get available CPU count from system (default to 2 if detection fails)
+            $availableCpus = 2;
+            if (is_readable('/proc/cpuinfo')) {
+                $cpuinfo = file_get_contents('/proc/cpuinfo');
+                $availableCpus = max(1, substr_count($cpuinfo, 'processor'));
+            }
+            // Ensure correct ownership for the mounted volume before docker run
+            // This fixes EACCES errors for npm install and pip install when files are created by PHP/root.
+            exec("sudo chown -R 1000:1000 " . escapeshellarg($appPath));
+            exec("sudo chmod -R 777 " . escapeshellarg($appPath));
+
+            // Max CPU Burst: 1.5x package limit, capped at available CPUs
+            // Shared hosting - prevents resource abuse
+            $cpuBurst = min($availableCpus, $cpuLimit * 1.5);
+
+            $command = [
+                'docker',
+                'run',
+                '-d',
+                '--name',
+                $containerName,
+                '--user',
+                '1000:1000', // Run as non-root user (Security Fix)
+                '--network',
+                $this->network,
+                '-v',
+                "{$hostPath}:/storage",
+                '-w',
+                "/storage/{$name}",
+
+                // --- Shared Resource Limits ---
+                '--memory-reservation',
+                $memoryLimit,   // Soft Limit (Guaranteed)
+                '--memory',
+                $burstMemLimit,             // Hard Limit (Burst Max)
+                '--cpus',
+                (string) $cpuBurst,           // CPU Burst Max
+                '--cpu-shares',
+                (string) $cpuShares,    // CPU Weight/Priority
+                '--restart',
+                'unless-stopped',
+
+                // Labels
+                '--label',
+                'traefik.enable=true',
+                '--label',
+                "traefik.http.routers.{$routerName}.rule={$traefikRule}",
+                '--label',
+                "traefik.http.routers.{$routerName}.entrypoints=websecure",
+                '--label',
+                "traefik.http.routers.{$routerName}.tls=true",
+                '--label',
+                "traefik.http.routers.{$routerName}.tls.certresolver=letsencrypt",
+                '--label',
+                "traefik.http.services.{$routerName}.loadbalancer.server.port={$containerPort}",
+            ];
+
+            // Add environment variables (containerPort already defined above)
+            $envVars['PORT'] = $containerPort;
+            $envVars['HOST'] = '0.0.0.0';  // Important for Flask apps
+            $envVars['PYTHONUNBUFFERED'] = '1'; // Important for Python logging
+            $envVars['FLASK_RUN_HOST'] = '0.0.0.0';
+            $envVars['FLASK_RUN_PORT'] = $containerPort;
+            $envVars['APP_DOMAIN'] = $domain;  // App's assigned domain
+            $envVars['PS1'] = "user@{$containerName}:~# "; // Terminal Prompt (Corrected from root@)
+
+            // Inject Python-specific path overrides globally so terminal sessions work without permission issues
+            if ($appType === 'python') {
+                $envVars['HOME'] = '/tmp';
+                $envVars['XDG_CACHE_HOME'] = '/tmp/.cache';
+                $envVars['PYTHONUSERBASE'] = '/tmp/.local';
+                $envVars['PATH'] = '/tmp/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
+            }
+
+            foreach ($envVars as $key => $value) {
+                $command[] = '-e';
+                $command[] = "{$key}={$value}";
+            }
+
+            // Add image and start command based on type
+            $command[] = $image;
+
+            if ($appType === 'nodejs') {
+                $command[] = 'sh';
+                $command[] = '-c';
+                // Sequential command execution with proper error handling
+                // 1. Fix permissions first
+                // 2. cd to root directory if specified (for monorepos)
+                // 3. Run install (wait for completion)
+                // 4. Run post-install if specified (migrations, etc.)
+                // 5. Run build if specified (wait for completion)
+                // 6. Start the app
+                // Using && ensures each step must succeed before proceeding
+                $install = !empty($installCommand) ? $installCommand : 'npm install --prefer-offline --no-audit --no-fund 2>&1 || echo "npm install failed, continuing anyway"';
+                $postInstall = !empty($postInstallCommand) ? $postInstallCommand : '';
+                $build = !empty($buildCommand) ? $buildCommand : '';
+                // Smart start: npm start reads package.json, fallback to common entry points
+                $start = !empty($startCommand) ? $startCommand : 'npm start 2>/dev/null || node index.js 2>/dev/null || node server.js 2>/dev/null || node app.js';
+
+                // Build the command chain with proper sequencing
+                $cmdChain = 'echo "=== Deployment Started ===" && ';
+                $cmdChain .= 'chown -R 1000:1000 . 2>/dev/null; '; // Fix permissions at start (use ; not && so we continue)
+
+                // Change to root directory if specified (for monorepos)
+                if (!empty($rootDirectory) && $rootDirectory !== './' && $rootDirectory !== '.') {
+                    $cmdChain .= 'echo "=== Changing to root directory: ' . escapeshellarg($rootDirectory) . ' ===" && ';
+                    $cmdChain .= 'cd ' . escapeshellarg($rootDirectory) . ' && ';
+                }
+
+                // Use timeout for install to prevent hanging 
+                $cmdChain .= 'echo "=== Running install ===" && ';
+                $cmdChain .= 'timeout 1200 sh -c ' . escapeshellarg('export NPM_CONFIG_PRODUCTION=false; ' . $install) . ' || echo "Install timed out or failed, continuing"; ';
+
+                // Post-install command
+                if (!empty($postInstall)) {
+                    $cmdChain .= 'echo "=== Running post-install ===" && ';
+                    $cmdChain .= 'timeout 600 sh -c ' . escapeshellarg($postInstall) . ' || echo "Post-install failed, continuing"; ';
+                }
+
+                if (!empty($build)) {
+                    $cmdChain .= 'echo "=== Running build ===" && ';
+                    $cmdChain .= 'timeout 600 sh -c ' . escapeshellarg($build) . ' || echo "Build failed, continuing"; ';
+                }
+
+                $cmdChain .= 'echo "=== Starting app ===" && ';
+                $cmdChain .= $start;
+
+                // If the app crashes, keep container alive for debugging
+                $command[] = $cmdChain . ' || (echo "=== Process failed, keeping container alive for debugging ===" && tail -f /dev/null)';
+            } else {
+                $command[] = 'sh';
+                $command[] = '-c';
+
+                // --- Improved Python Deployment Logic ---
+
+                // 1. Setup Python environment and install command
+                // We use /tmp/.local for PYTHONUSERBASE to avoid permission issues if the volume is mounted read-only for uid 1000
+                $envSetup = 'export HOME=/tmp; export XDG_CACHE_HOME=/tmp/.cache; export PYTHONUSERBASE=/tmp/.local; export PATH=$PYTHONUSERBASE/bin:$PATH; ';
+                // Install essential build tools (setuptools<70 for pkg_resources compatibility with older packages)
+                $baseInstall = $envSetup . 'pip install --user --upgrade "pip<24.1" "setuptools<70" wheel 2>/dev/null; pip install --user --no-cache-dir flask gunicorn uvicorn django 2>/dev/null || echo "Base dependencies install failed"';
+
+
+                $userInstall = !empty($installCommand) ? $installCommand : '';
+
+                // Smart Install Chain
+                $installChain = $baseInstall . '; ';
+
+                if (!empty($userInstall)) {
+                    $installChain .= $envSetup . $userInstall;
+                } else {
+                    $installChain .= $envSetup . '
                 if [ -f requirements.txt ]; then pip install --user --no-cache-dir -r requirements.txt; 
                 elif [ -f requirements/base.txt ]; then pip install --user --no-cache-dir -r requirements/base.txt; 
                 elif [ -f Pipfile ]; then pip install --user pipenv && python -m pipenv install --system; 
                 elif [ -f pyproject.toml ]; then pip install --user .; 
                 fi';
-            }
-            
-            // 2. Build Command (optional)
-            $buildChain = !empty($buildCommand) ? $buildCommand : 'echo "No build command"';
-            
-            // 3. Robust Start Command
-            if (!empty($startCommand)) {
-                $startChain = $envSetup . $startCommand;
-            } else {
-                // Smart Detection with Gunicorn/Uvicorn
-                $startChain = $envSetup . '
+                }
+
+                // 2. Build Command (optional)
+                $buildChain = !empty($buildCommand) ? $buildCommand : 'echo "No build command"';
+
+                // 3. Robust Start Command
+                if (!empty($startCommand)) {
+                    $startChain = $envSetup . $startCommand;
+                } else {
+                    // Smart Detection with Gunicorn/Uvicorn
+                    $startChain = $envSetup . '
                 # Try Django
                 MANAGE_PY=$(find . -maxdepth 2 -name "manage.py" -type f | head -1);
                 if [ -n "$MANAGE_PY" ]; then
@@ -380,70 +376,70 @@ class DockerService
                     echo "No standard entry point found. Serving simple HTTP server...";
                     python -m http.server $PORT;
                 fi';
-            }
-            
-            // Assemble Command Chain
-            $cmdChain = 'echo "=== Python Deployment Started ===" && ';
-            $cmdChain .= 'chown -R 1000:1000 . 2>/dev/null; '; // Fix permissions (use ; not && to continue on failure)
-            
-            if (!empty($rootDirectory) && $rootDirectory !== './' && $rootDirectory !== '.') {
-                 $cmdChain .= 'cd ' . escapeshellarg($rootDirectory) . ' && ';
-            }
-            
-            if (!empty($githubRepo)) {
-                // For GitHub repos, run the full chain
-                $cmdChain .= 'echo "=== Installing Dependencies ===" && ';
-                $cmdChain .= 'timeout 1200 sh -c ' . escapeshellarg($installChain) . ' || echo "Install failed/timed out"; ';
-                
-                if (!empty($postInstallCommand)) {
-                    $cmdChain .= 'echo "=== Running Post-Install ===" && ';
-                    $cmdChain .= 'timeout 600 sh -c ' . escapeshellarg($postInstallCommand) . ' || echo "Post-Install failed"; ';
                 }
-                
-                $cmdChain .= 'echo "=== Starting App ===" && ';
-                $cmdChain .= $startChain;
-            } else {
-                 // For starter apps or direct uploads - still need to install dependencies
-                 $cmdChain .= 'echo "=== Installing Dependencies ===" && ';
-                 $cmdChain .= 'timeout 1200 sh -c ' . escapeshellarg($installChain) . ' || echo "Install failed/timed out"; ';
-                 $cmdChain .= 'echo "=== Starting App ===" && ';
-                 $cmdChain .= $startChain;
+
+                // Assemble Command Chain
+                $cmdChain = 'echo "=== Python Deployment Started ===" && ';
+                $cmdChain .= 'chown -R 1000:1000 . 2>/dev/null; '; // Fix permissions (use ; not && to continue on failure)
+
+                if (!empty($rootDirectory) && $rootDirectory !== './' && $rootDirectory !== '.') {
+                    $cmdChain .= 'cd ' . escapeshellarg($rootDirectory) . ' && ';
+                }
+
+                if (!empty($githubRepo)) {
+                    // For GitHub repos, run the full chain
+                    $cmdChain .= 'echo "=== Installing Dependencies ===" && ';
+                    $cmdChain .= 'timeout 1200 sh -c ' . escapeshellarg($installChain) . ' || echo "Install failed/timed out"; ';
+
+                    if (!empty($postInstallCommand)) {
+                        $cmdChain .= 'echo "=== Running Post-Install ===" && ';
+                        $cmdChain .= 'timeout 600 sh -c ' . escapeshellarg($postInstallCommand) . ' || echo "Post-Install failed"; ';
+                    }
+
+                    $cmdChain .= 'echo "=== Starting App ===" && ';
+                    $cmdChain .= $startChain;
+                } else {
+                    // For starter apps or direct uploads - still need to install dependencies
+                    $cmdChain .= 'echo "=== Installing Dependencies ===" && ';
+                    $cmdChain .= 'timeout 1200 sh -c ' . escapeshellarg($installChain) . ' || echo "Install failed/timed out"; ';
+                    $cmdChain .= 'echo "=== Starting App ===" && ';
+                    $cmdChain .= $startChain;
+                }
+
+                // Keep alive on failure
+                $command[] = $cmdChain . ' || (echo "=== App Failed ===" && tail -f /dev/null)';
             }
-            
-            // Keep alive on failure
-            $command[] = $cmdChain . ' || (echo "=== App Failed ===" && tail -f /dev/null)';
-        }
 
-        $process = new Process($command);
-        $process->setTimeout(1800); // 30 mins max for large apps pulling images + installing dependencies
-        $process->run();
+            $process = new Process($command);
+            $process->setTimeout(1800); // 30 mins max for large apps pulling images + installing dependencies
+            $process->run();
 
-        if (!$process->isSuccessful()) {
-            throw new ProcessFailedException($process);
-        }
+            if (!$process->isSuccessful()) {
+                throw new ProcessFailedException($process);
+            }
 
-        $containerId = trim($process->getOutput());
-        $this->log('INFO', "Container created: {$containerId} ({$containerName})");
+            $containerId = trim($process->getOutput());
+            $this->log('INFO', "Container created: {$containerId} ({$containerName})");
 
-        // Generate Traefik config file for this app
-        $this->generateTraefikConfig($routerName, $domain, $containerName, $containerPort);
-        
-        $this->log('INFO', "Deployment successful for {$name}");
+            // Generate Traefik config file for this app
+            $this->generateTraefikConfig($routerName, $domain, $containerName, $containerPort);
 
-        return [
-            'container_id' => $containerId,
-            'container_name' => $containerName,
-            'domain' => $domain,
-            'app_path' => $appPath,
-            'runtime_version' => $runtimeVersion
-        ];
-        
+            $this->log('INFO', "Deployment successful for {$name}");
+
+            return [
+                'container_id' => $containerId,
+                'container_name' => $containerName,
+                'domain' => $domain,
+                'app_path' => $appPath,
+                'runtime_version' => $runtimeVersion
+            ];
+
         } catch (\Exception $e) {
             $this->log('ERROR', "Deployment failed for {$name}: " . $e->getMessage());
-            
+
             // Cleanup on failure
             $this->cleanupFailedDeployment($name, $containerName, $appPath);
-            
+
             throw $e;
         }
     }
@@ -733,7 +729,7 @@ if __name__ == '__main__':
 PY;
 
             file_put_contents($appPath . '/app.py', str_replace("\r", '', $appPy));
-            
+
             // Note: We deliberately skip creating requirements.txt 
             // so the Python app deploys instantly without pip install delays.
         }
@@ -787,7 +783,7 @@ PY;
         // Apply to base path first
         $isDir = is_dir($path);
         chmod($path, $isDir ? 0755 : 0644);
-        
+
         // Ensure ownership is 1000:1000 (if running as root)
         if (posix_geteuid() === 0) {
             @chown($path, 1000);
@@ -843,7 +839,7 @@ PY;
     public function removeAppDirectory(string $name): void
     {
         $appPath = $this->userAppsPath . "/{$name}";
-        
+
         if (!is_dir($appPath)) {
             return;
         }
@@ -851,7 +847,7 @@ PY;
         // Recursive delete using shell for speed and power (careful with inputs!)
         // Since $name is sanitized in controller, this is relatively safe, but let's be extra safe
         $sanitizedName = preg_replace('/[^a-zA-Z0-9-]/', '', $name);
-        
+
         if (empty($sanitizedName) || $sanitizedName !== $name) {
             // Fallback to PHP recursive delete if name looks suspicious
             $this->recursiveDelete($appPath);
@@ -864,12 +860,12 @@ PY;
         $realAppPath = realpath($appPath);
 
         if ($realAppPath && strpos($realAppPath, $realUserAppsPath) === 0 && strlen($realAppPath) > strlen($realUserAppsPath)) {
-             // Use rm -rf
-             $process = new Process(['rm', '-rf', $appPath]);
-             $process->run();
+            // Use rm -rf
+            $process = new Process(['rm', '-rf', $appPath]);
+            $process->run();
         } else {
-             // Fallback
-             $this->recursiveDelete($appPath);
+            // Fallback
+            $this->recursiveDelete($appPath);
         }
     }
 
@@ -878,7 +874,7 @@ PY;
         if (!is_dir($dir)) {
             return;
         }
-        
+
         $files = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
             \RecursiveIteratorIterator::CHILD_FIRST
@@ -1073,29 +1069,29 @@ PY;
         $logFile = '/var/log/logicpanel/docker-service.log';
         $timestamp = date('Y-m-d H:i:s');
         $contextStr = !empty($context) ? json_encode($context) : '';
-        
+
         $logMessage = "[{$timestamp}] [{$level}] {$message} {$contextStr}\n";
-        
+
         @file_put_contents($logFile, $logMessage, FILE_APPEND);
     }
 
-    public function cleanupFailedDeployment(string $name, string $containerName, string $appPath): void 
+    public function cleanupFailedDeployment(string $name, string $containerName, string $appPath): void
     {
         try {
             $this->log('INFO', "Cleaning up failed deployment: {$name}");
-            
+
             // Remove container if exists
             $process = new Process(['docker', 'rm', '-f', $containerName]);
             $process->run();
-            
+
             // Remove Traefik config
             $this->removeTraefikConfig($name);
-            
+
             // Remove app directory
             if (is_dir($appPath)) {
                 $this->removeAppDirectory($name);
             }
-            
+
         } catch (\Exception $e) {
             $this->log('WARNING', "Cleanup failed for {$name}: {$e->getMessage()}");
         }
@@ -1110,18 +1106,18 @@ PY;
             'running' => false,
             'details' => []
         ];
-        
+
         try {
             $health['running'] = $this->isContainerRunning($containerId);
-            
+
             if (!$health['running']) {
                 $health['status'] = 'stopped';
                 return $health;
             }
-            
+
             $process = new Process(['docker', 'inspect', '--format', '{{json .State}}', $containerId]);
             $process->run();
-            
+
             if ($process->isSuccessful()) {
                 $state = json_decode($process->getOutput(), true);
                 $health['details'] = $state;
@@ -1131,9 +1127,9 @@ PY;
                     $health['status'] = $state['Running'] ? 'running' : 'stopped';
                 }
             }
-            
+
             return $health;
-            
+
         } catch (\Exception $e) {
             $this->log('ERROR', "Health check failed for {$containerId}: " . $e->getMessage());
             $health['status'] = 'error';
@@ -1143,24 +1139,24 @@ PY;
 
     public function verifyContainerIsolation(string $containerId): array
     {
-         $isolation = [
+        $isolation = [
             'isolated' => false,
             'network' => null,
             'details' => []
         ];
-        
+
         try {
             $process = new Process(['docker', 'inspect', '--format', '{{json .NetworkSettings}}', $containerId]);
             $process->run();
-            
+
             if ($process->isSuccessful()) {
                 $network = json_decode($process->getOutput(), true);
                 $isolation['network'] = $network['Networks'] ?? [];
                 $isolation['isolated'] = isset($network['Networks'][$this->network]);
             }
-            
+
             return $isolation;
-            
+
         } catch (\Exception $e) {
             $this->log('ERROR', "Isolation check failed for {$containerId}: " . $e->getMessage());
             return $isolation;

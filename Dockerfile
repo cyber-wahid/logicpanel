@@ -62,7 +62,7 @@ RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions sto
 
 # Give www-data sudo access for rm and chown commands (for managing user apps)
 RUN apt-get update && apt-get install -y sudo \
-    && echo "www-data ALL=(ALL) NOPASSWD: /bin/rm, /usr/bin/chown" >> /etc/sudoers \
+    && echo "www-data ALL=(ALL) NOPASSWD: /bin/rm, /usr/bin/chown, /bin/chmod" >> /etc/sudoers \
     && rm -rf /var/lib/apt/lists/*
 
 # Setup entrypoint

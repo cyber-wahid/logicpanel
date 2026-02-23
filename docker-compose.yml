@@ -122,8 +122,8 @@ services:
       - .:/var/www/html
     networks:
       - logicpanel_internal
-    security_opt:
-      - no-new-privileges:true
+    # security_opt:
+    #   - no-new-privileges:true
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost/public/health.php" ]
       interval: 30s
