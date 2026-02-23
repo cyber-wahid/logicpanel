@@ -51,9 +51,9 @@ class DockerService
 
         // Build image name
         if ($appType === 'nodejs') {
-            return "node:{$version}-bookworm-slim";
+            return "node:{$version}-bookworm";
         } else {
-            return "python:{$version}-slim";
+            return "python:{$version}-bookworm";
         }
     }
 

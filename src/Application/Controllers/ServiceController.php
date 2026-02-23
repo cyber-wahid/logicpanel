@@ -205,11 +205,11 @@ class ServiceController
                     }
                 }
                 if (strpos($version, '20') !== false)
-                    $image = 'node:20-slim';
+                    $image = 'node:20-bookworm';
                 elseif (strpos($version, '16') !== false)
-                    $image = 'node:16-slim';
+                    $image = 'node:16-bookworm';
                 else
-                    $image = 'node:18-slim';
+                    $image = 'node:18-bookworm';
             } elseif ($type === 'python') {
                 if (empty($installCmd))
                     $installCmd = 'pip install -r requirements.txt';
@@ -220,13 +220,13 @@ class ServiceController
                         $startCmd = 'python app.py';
                     }
                 }
-                // Use slim images instead of alpine for better compatibility with compiled packages (pandas, numpy, etc.)
+                // Use standard bookworm images for full compatibility (openssl, etc.)
                 if (strpos($version, '3.10') !== false)
-                    $image = 'python:3.10-slim';
+                    $image = 'python:3.10-bookworm';
                 elseif (strpos($version, '3.9') !== false)
-                    $image = 'python:3.9-slim';
+                    $image = 'python:3.9-bookworm';
                 else
-                    $image = 'python:3.11-slim';
+                    $image = 'python:3.11-bookworm';
             }
 
             // Create service record first (no port needed with Traefik)
@@ -668,21 +668,21 @@ class ServiceController
                 // We need to fetch necessary params that might not be in $data but are in DB
 
                 // Image Determination (Re-used logic from create - should ideally be refactored to a helper)
-                $image = 'node:18-slim'; // Default
+                $image = 'node:18-bookworm'; // Default
                 if ($service->type === 'nodejs') {
                     if (strpos($service->runtime_version, '20') !== false)
-                        $image = 'node:20-slim';
+                        $image = 'node:20-bookworm';
                     elseif (strpos($service->runtime_version, '16') !== false)
-                        $image = 'node:16-slim';
+                        $image = 'node:16-bookworm';
                     else
-                        $image = 'node:18-slim';
+                        $image = 'node:18-bookworm';
                 } elseif ($service->type === 'python') {
                     if (strpos($service->runtime_version, '3.10') !== false)
-                        $image = 'python:3.10-slim';
+                        $image = 'python:3.10-bookworm';
                     elseif (strpos($service->runtime_version, '3.9') !== false)
-                        $image = 'python:3.9-slim';
+                        $image = 'python:3.9-bookworm';
                     else
-                        $image = 'python:3.11-slim';
+                        $image = 'python:3.11-bookworm';
                 }
 
                 // Create Container

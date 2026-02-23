@@ -227,13 +227,8 @@ class FileController
             return $this->jsonResponse($response, ['error' => 'File too large'], 400);
         }
 
-        // Check file extension
+        // Extension check removed to allow all file types: .prisma, .env, etc
         $filename = $uploadedFile->getClientFilename();
-        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        // Allow files without extensions (e.g. .env, Dockerfile, etc)
-        if (!empty($extension) && !in_array($extension, $this->allowedExtensions)) {
-            return $this->jsonResponse($response, ['error' => 'File type not allowed: ' . $extension], 400);
-        }
 
         $basePath = $this->userAppsPath . "/service_{$serviceId}";
         $fullPath = $this->sanitizePath($basePath, $targetPath . '/' . $filename);
@@ -290,12 +285,7 @@ class FileController
             return $this->jsonResponse($response, ['error' => 'Invalid path'], 400);
         }
 
-        // Check file extension
-        $extension = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
-        // Allow files without extensions (e.g. .env, Dockerfile, etc)
-        if (!empty($extension) && !in_array($extension, array_map('strtolower', $this->allowedExtensions))) {
-            return $this->jsonResponse($response, ['error' => 'File type not allowed: ' . ($extension ?: 'none')], 400);
-        }
+        // Extension check removed to allow all file types: .prisma, .env, etc
 
         // Check file size
         if (strlen($content) > $this->maxFileSize) {
