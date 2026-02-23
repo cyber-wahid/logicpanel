@@ -120,6 +120,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
     volumes:
       - .:/var/www/html
+      - .ssh:/var/www/html/.ssh:ro
     networks:
       - logicpanel_internal
     # security_opt:

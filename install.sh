@@ -1,16 +1,32 @@
-#!/usr/bin/env bash
+# --- 0. Logging Helpers & Colors ---
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+NC='\033[0m'
 
-# LogicPanel - One-Line Installer v3.1.4 (Production Edition)
-# Author: cyber-wahid
-# Description: Automated installer for LogicPanel with Docker and Traefik SSL.
-# Supports: Debian/Ubuntu (APT), RHEL/CentOS/AlmaLinux/Rocky/Fedora (DNF/YUM)
-# License: Proprietary
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+generate_random() { cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w "$1" | head -n 1; }
 
-# --- 0. Screen Session Wrapper ---
+# --- 1. Remote Execution Handler ---
+# If being run via curl | bash, we need to download the script to a file 
+# so that 'screen' can re-run it reliably.
+if [[ ! -f "$0" ]] || [[ "$0" == "bash" ]] || [[ "$0" == "/dev/stdin" ]]; then
+    log_info "Remote execution detected. Downloading installer to /tmp/lp_install.sh..."
+    curl -sSL https://raw.githubusercontent.com/cyber-wahid/logicpanel/main/install.sh -o /tmp/lp_install.sh
+    chmod +x /tmp/lp_install.sh
+    exec /tmp/lp_install.sh "$@"
+    exit 0
+fi
+
+# --- 2. Screen Session Wrapper ---
 # This ensures the installation continues even if the SSH connection is lost.
 if [ -z "$STY" ]; then
-    log_info "Relaunching installer in a protected screen session (lp_installer)..."
-    
     # Check if screen is installed
     if ! command -v screen &> /dev/null; then
         log_warn "Screen not found. Installing..."
@@ -21,29 +37,23 @@ if [ -z "$STY" ]; then
         fi
     fi
     
-    # Relaunch script inside screen and attach immediately so user sees it
-    # We use -m to force a new session even if one exists, or -R to reattach
-    exec screen -S lp_installer -m bash "$0" "$@"
-    exit 0
-fi
-
-# Ensure user is aware they are in a screen session
-log_success "Running inside screen session: lp_installer"
-
-# --- 1. Duplicate Installation Check ---
-if [ -d "$INSTALL_DIR" ]; then
-    log_warn "LogicPanel directory already exists at $INSTALL_DIR"
-    log_warn "Re-installing might OVERWRITE your existing configuration and data!"
-    echo ""
-    read -p "--- Do you REALLY want to proceed? (y/N): " CONFIRM_REINSTALL < /dev/tty
-    if [[ ! "$CONFIRM_REINSTALL" =~ ^[Yy]$ ]]; then
-        log_error "Installation cancelled to protect existing data."
-        exit 1
+    # Check if we have a TTY for screen
+    if [ ! -t 0 ]; then
+        log_warn "Not connected to a terminal. Skipping protected screen session."
+    else
+        log_info "Relaunching installer in a protected screen session (lp_installer)..."
+        # Relaunch script inside screen and attach immediately so user sees it
+        exec screen -S lp_installer -m bash "$0" "$@"
+        exit 0
     fi
 fi
 
+# Ensure user is aware they are in a screen session
+if [ -n "$STY" ]; then
+    log_success "Running inside screen session: lp_installer"
+fi
 
-# --- Configuration ---
+# --- 3. Configuration ---
 # Prevent interactive prompts on APT systems (Critical Fix for Credential Display)
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE=a
@@ -65,25 +75,21 @@ if [ "$IS_DOCKER_DESKTOP" = true ]; then
 else
     INSTALL_DIR="/opt/logicpanel"
 fi
-VERSION="3.1.6"
+VERSION="3.1.7"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-MAGENTA='\033[0;35m'
-NC='\033[0m'
+# --- 4. Duplicate Installation Check ---
+if [ -d "$INSTALL_DIR" ]; then
+    log_warn "LogicPanel directory already exists at $INSTALL_DIR"
+    log_warn "Re-installing might OVERWRITE your existing configuration and data!"
+    echo ""
+    read -p "--- Do you REALLY want to proceed? (y/N): " CONFIRM_REINSTALL < /dev/tty
+    if [[ ! "$CONFIRM_REINSTALL" =~ ^[Yy]$ ]]; then
+        log_error "Installation cancelled to protect existing data."
+        exit 1
+    fi
+fi
 
-# Helpers
-log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-generate_random() { cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w "$1" | head -n 1; }
-
-# --- 1. Root/Sudo Check ---
+# --- 5. Root/Sudo Check ---
 SUDO=""
 if [[ $EUID -ne 0 ]]; then
    log_warn "Running as non-root user. Access to Docker Desktop should work."
@@ -110,7 +116,7 @@ echo "╚══════╝ ╚═════╝  ╚═════╝ ╚�
 echo -e "${NC}"
 echo -e "--- ${YELLOW}LogicPanel Automated Installation v${VERSION} (Traefik Edition)${NC} ---\n"
 
-# --- 2. System Preparation ---
+# --- 6. System Preparation ---
 log_info "Step 1: System Checks..."
 
 # We're already in screen at this point (or user bypassed it)
@@ -280,455 +286,112 @@ wait_for_container() {
     return 1
 }
 
-# Check Docker Pre-requisites
+# --- 7. Docker Installation Check ---
 check_docker() {
-    # ─── Docker Desktop Compatibility Fix ───
-    if [ -n "$SUDO_USER" ]; then
-        USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
-        DESKTOP_SOCKET="$USER_HOME/.docker/desktop/docker-cli.sock"
-        if [ -S "$DESKTOP_SOCKET" ]; then
-            log_info "Detected Docker Desktop. Using socket: $DESKTOP_SOCKET"
-            export DOCKER_HOST="unix://$DESKTOP_SOCKET"
-        fi
-    fi
-
     if ! command -v docker &> /dev/null; then
-        log_error "Docker is NOT installed."
-        log_error "Please install Docker first: https://docs.docker.com/engine/install/"
-        log_error "This script requires a pre-installed and working Docker environment."
-        exit 1
-    fi
-
-    # Simplified check: Just try a docker command
-    if ! docker ps > /dev/null 2>&1; then
-        log_warn "Docker service seems to be down or current user cannot access it."
-        log_warn "Attempting to start..."
-        # Try systemctl but don't fail if it doesn't work (e.g. non-systemd)
-        $SUDO systemctl start docker || $SUDO service docker start || true
-        sleep 2
+        log_info "Docker is not installed. Installing..."
         
-        # Check again
-        if ! docker ps > /dev/null 2>&1; then
-             log_warn "Could not auto-start Docker. Assuming you know what you are doing or using a custom environment."
-             log_warn "If Docker is not actually running, the next steps will fail."
-             # We do NOT exit here to allow "special" setups to proceed
-        fi
-    else
-        log_success "Docker is running."
-    fi
-
-    DOCKER_VER=$(docker --version | grep -oP '\d+\.\d+\.\d+' | head -1)
-    log_success "Docker is ready (v${DOCKER_VER})"
-}
-check_docker
-
-# Check required ports
-manage_selinux
-REQUIRED_PORTS=(80 443 9999 7777 3306 5432 27017)
-for port in "${REQUIRED_PORTS[@]}"; do
-    if ! check_port $port; then
-        log_warn "Port $port is held by a non-container process."
-        $SUDO fuser -k -n tcp $port 2>/dev/null || true
-        sleep 1
-        if ! check_port $port; then
-            log_error "Could not clear port $port. Please free it manually and restart."
-            exit 1
-        fi
-        log_success "Port $port cleared."
-    fi
-done
-
-# Configure firewall automatically (TCP + UDP for HTTP/3)
-log_info "Configuring firewall rules (HTTP/3 enabled)..."
-
-# Detect firewall type
-if command -v ufw &> /dev/null && ufw status | grep -q "Status: active"; then
-    log_info "Detected UFW firewall. Configuring..."
-    ufw allow 80/tcp comment "HTTP - Let's Encrypt" > /dev/null 2>&1
-    ufw allow 443/tcp comment "HTTPS" > /dev/null 2>&1
-    ufw allow 443/udp comment "HTTP/3 (QUIC)" > /dev/null 2>&1
-    ufw allow 7777/tcp comment "LogicPanel User Panel" > /dev/null 2>&1
-    ufw allow 7777/udp comment "HTTP/3 User Panel" > /dev/null 2>&1
-    ufw allow 9999/tcp comment "LogicPanel Master Panel" > /dev/null 2>&1
-    ufw allow 9999/udp comment "HTTP/3 Master Panel" > /dev/null 2>&1
-    log_success "UFW rules configured with HTTP/3 support."
-elif command -v firewall-cmd &> /dev/null && systemctl is-active --quiet firewalld; then
-    log_info "Detected firewalld. Configuring..."
-    firewall-cmd --permanent --add-port=80/tcp > /dev/null 2>&1
-    firewall-cmd --permanent --add-port=443/tcp > /dev/null 2>&1
-    firewall-cmd --permanent --add-port=443/udp > /dev/null 2>&1
-    firewall-cmd --permanent --add-port=7777/tcp > /dev/null 2>&1
-    firewall-cmd --permanent --add-port=7777/udp > /dev/null 2>&1
-    firewall-cmd --permanent --add-port=9999/tcp > /dev/null 2>&1
-    firewall-cmd --permanent --add-port=9999/udp > /dev/null 2>&1
-    firewall-cmd --reload > /dev/null 2>&1
-    log_success "Firewalld rules configured with HTTP/3 support."
-elif command -v nft &> /dev/null && systemctl is-active --quiet nftables 2>/dev/null; then
-    log_info "Detected nftables. Configuring..."
-    # Add LogicPanel table if not exists
-    $SUDO nft add table inet logicpanel 2>/dev/null || true
-    $SUDO nft add chain inet logicpanel input '{ type filter hook input priority 0; policy accept; }' 2>/dev/null || true
-    for port in 80 443 7777 9999; do
-        $SUDO nft add rule inet logicpanel input tcp dport $port accept 2>/dev/null || true
-    done
-    for port in 443 7777 9999; do
-        $SUDO nft add rule inet logicpanel input udp dport $port accept 2>/dev/null || true
-    done
-    # Persist rules
-    if [ -d /etc/nftables.d ]; then
-        $SUDO nft list table inet logicpanel > /etc/nftables.d/logicpanel.conf 2>/dev/null || true
-    fi
-    log_success "nftables rules configured with HTTP/3 support."
-elif command -v iptables &> /dev/null; then
-    log_info "Configuring iptables..."
-    $SUDO iptables -A INPUT -p tcp --dport 80 -j ACCEPT > /dev/null 2>&1
-    $SUDO iptables -A INPUT -p tcp --dport 443 -j ACCEPT > /dev/null 2>&1
-    $SUDO iptables -A INPUT -p udp --dport 443 -j ACCEPT > /dev/null 2>&1
-    $SUDO iptables -A INPUT -p tcp --dport 7777 -j ACCEPT > /dev/null 2>&1
-    $SUDO iptables -A INPUT -p udp --dport 7777 -j ACCEPT > /dev/null 2>&1
-    $SUDO iptables -A INPUT -p tcp --dport 9999 -j ACCEPT > /dev/null 2>&1
-    $SUDO iptables -A INPUT -p udp --dport 9999 -j ACCEPT > /dev/null 2>&1
-    
-    # Save iptables rules (support multiple persistence methods)
-    if command -v iptables-save &> /dev/null; then
-        $SUDO mkdir -p /etc/iptables
-        $SUDO iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
-    fi
-    if command -v netfilter-persistent &> /dev/null; then
-        $SUDO netfilter-persistent save 2>/dev/null || true
-    fi
-    log_success "Iptables rules configured with HTTP/3 support."
-else
-    log_warn "No firewall detected. Ports should be open by default."
-    log_info "If you configure a firewall later, open these ports:"
-    log_info "  TCP: 80, 443, 7777, 9999"
-    log_info "  UDP: 443, 7777, 9999 (for HTTP/3)"
-fi
-
-# Install Docker
-if command -v docker &> /dev/null; then
-    DOCKER_VER=$(docker --version 2>/dev/null | grep -oP '\d+\.\d+\.\d+' | head -1)
-    log_success "Docker is already installed (v${DOCKER_VER}). Skipping installation."
-    
-    # Ensure Docker service is running
-    if ! $SUDO systemctl is-active --quiet docker 2>/dev/null; then
-        log_info "Docker service is not running. Starting..."
-        $SUDO systemctl enable --now docker 2>/dev/null || $SUDO service docker start 2>/dev/null || true
-        log_success "Docker service started."
-    fi
-else
-    log_info "Docker is not installed. Installing..."
-    
-    # Detect OS
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        log_info "Detected OS: ${PRETTY_NAME:-$ID}"
-    fi
-    
-    DOCKER_INSTALLED=false
-    OS_ID="${ID:-unknown}"
-    OS_ID_LIKE="${ID_LIKE:-}"
-    OS_VERSION_ID="${VERSION_ID:-}"
-    
-    # ── Remove conflicting packages (Podman, old Docker) ────────────
-    log_info "Removing conflicting packages..."
-    if command -v dnf &> /dev/null || command -v yum &> /dev/null; then
-        PKG_RM="${PKG_MANAGER:-yum}"
-        $SUDO $PKG_RM remove -y docker docker-client docker-client-latest docker-common \
-            docker-latest docker-latest-logrotate docker-logrotate docker-engine \
-            podman runc 2>/dev/null || true
-    elif command -v apt-get &> /dev/null; then
-        for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do
-            $SUDO apt-get remove -y $pkg 2>/dev/null || true
-        done
-    fi
-    
-    # ── Determine Docker repo URL based on distro ───────────────────
-    # Docker officially supports: ubuntu, debian, centos, rhel, fedora, sles
-    # Derivatives must map to their parent distro's repo
-    DOCKER_REPO_URL=""
-    REPO_METHOD=""
-    
-    case "$OS_ID" in
-        ubuntu|pop|linuxmint|elementary|zorin|kubuntu|lubuntu|xubuntu|neon)
-            DOCKER_REPO_URL="https://download.docker.com/linux/ubuntu"
-            REPO_METHOD="apt"
-            # Map derivatives to their Ubuntu base
-            if [ "$OS_ID" != "ubuntu" ]; then
-                # Try to find the Ubuntu codename from os-release
-                UBUNTU_CODENAME="${UBUNTU_CODENAME:-$(grep UBUNTU_CODENAME /etc/os-release 2>/dev/null | cut -d= -f2)}"
-                [ -z "$UBUNTU_CODENAME" ] && UBUNTU_CODENAME="jammy"
-            fi
-            ;;
-        debian|raspbian|kali|bunsen*)
-            DOCKER_REPO_URL="https://download.docker.com/linux/debian"
-            REPO_METHOD="apt"
-            ;;
-        centos|almalinux|rocky|ol|scientific|eurolinux|virtuozzo)
-            DOCKER_REPO_URL="https://download.docker.com/linux/centos"
-            REPO_METHOD="dnf"
-            ;;
-        rhel)
-            DOCKER_REPO_URL="https://download.docker.com/linux/rhel"
-            REPO_METHOD="dnf"
-            ;;
-        fedora|nobara)
-            DOCKER_REPO_URL="https://download.docker.com/linux/fedora"
-            REPO_METHOD="dnf"
-            ;;
-        amzn)
-            # Amazon Linux 2023+ uses dnf and is RHEL-based
-            DOCKER_REPO_URL="https://download.docker.com/linux/centos"
-            REPO_METHOD="dnf"
-            ;;
-        sles|opensuse*|arch|manjaro*)
-            log_error "Unsupported distribution: $OS_ID"
-            log_error "LogicPanel supports only Debian/Ubuntu (APT) and RHEL/CentOS/AlmaLinux/Rocky/Fedora (DNF/YUM)."
-            exit 1
-            ;;
-        *)
-            # Try to determine by ID_LIKE
-            case "$OS_ID_LIKE" in
-                *ubuntu*|*debian*)
-                    DOCKER_REPO_URL="https://download.docker.com/linux/ubuntu"
-                    REPO_METHOD="apt"
-                    ;;
-                *rhel*|*centos*|*fedora*)
-                    DOCKER_REPO_URL="https://download.docker.com/linux/centos"
-                    REPO_METHOD="dnf"
-                    ;;
-                *)
-                    log_error "Unsupported distribution"
-                    log_error "LogicPanel supports only:"
-                    log_error "  - Debian/Ubuntu and derivatives (APT)"
-                    log_error "  - RHEL/CentOS/AlmaLinux/Rocky/Fedora (DNF/YUM)"
-                    exit 1
-                    ;;
-            esac
-            ;;
-    esac
-    
-    log_info "Using installation method: $REPO_METHOD"
-    
-    # ── Method 1: APT-based (Ubuntu, Debian, derivatives) ──────────
-    if [ "$REPO_METHOD" = "apt" ] && [ "$DOCKER_INSTALLED" = false ]; then
-        log_info "Installing Docker via APT repository..."
-        
-        # Install prerequisites
-        $SUDO apt-get update -qq
-        $SUDO apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
-        
-        # Add Docker's official GPG key
-        $SUDO install -m 0755 -d /etc/apt/keyrings
-        curl -fsSL "${DOCKER_REPO_URL}/gpg" | $SUDO gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-        
-        # Determine the codename for the repo
-        if [ -n "${UBUNTU_CODENAME:-}" ]; then
-            CODENAME="$UBUNTU_CODENAME"
-        elif [ -n "${VERSION_CODENAME:-}" ]; then
-            CODENAME="$VERSION_CODENAME"
-        else
-            HAS_LSB=$(command -v lsb_release &> /dev/null && echo true || echo false)
-            if [ "$HAS_LSB" = true ]; then
-                CODENAME=$(lsb_release -cs)
-            else
-                # Fallback to common Ubuntu LTS
-                CODENAME="jammy"
-                log_warn "Could not detect codename, defaulting to: $CODENAME"
-            fi
+        # Detect OS
+        if [ -f /etc/os-release ]; then
+            . /etc/os-release
+            log_info "Detected OS: ${PRETTY_NAME:-$ID}"
         fi
         
-        # Add the Docker repository
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] ${DOCKER_REPO_URL} ${CODENAME} stable" | \
-            $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
+        OS_ID="${ID:-unknown}"
+        OS_ID_LIKE="${ID_LIKE:-}"
         
-        # Install Docker
-        $SUDO apt-get update -qq
-        $SUDO apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-        
-        command -v docker &> /dev/null && DOCKER_INSTALLED=true
-    fi
-    
-    # ── Method 2: DNF/YUM-based (RHEL, CentOS, AlmaLinux, Rocky, Fedora) ──
-    if [ "$REPO_METHOD" = "dnf" ] && [ "$DOCKER_INSTALLED" = false ]; then
-        log_info "Installing Docker via DNF/YUM repository..."
-        
-        # Prefer dnf over yum
-        if command -v dnf &> /dev/null; then
-            DNF_CMD="dnf"
-        else
-            DNF_CMD="yum"
+        # Remove conflicting packages
+        log_info "Removing conflicting packages..."
+        if command -v dnf &> /dev/null || command -v yum &> /dev/null; then
+            PKG_RM=$(command -v dnf || echo "yum")
+            $SUDO $PKG_RM remove -y docker docker-client docker-client-latest docker-common \
+                docker-latest docker-latest-logrotate docker-logrotate docker-engine \
+                podman runc 2>/dev/null || true
+        elif command -v apt-get &> /dev/null; then
+            for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do
+                $SUDO apt-get remove -y $pkg 2>/dev/null || true
+            done
         fi
         
-        # Install prerequisites
-        $SUDO $DNF_CMD install -y yum-utils 2>/dev/null || true
+        # Setup repo and install
+        DOCKER_REPO_URL=""
+        REPO_METHOD=""
         
-        # Add Docker repository
-        $SUDO $DNF_CMD config-manager --add-repo "${DOCKER_REPO_URL}/docker-ce.repo" 2>/dev/null || true
-        
-        # Install Docker
-        $SUDO $DNF_CMD install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-        
-        command -v docker &> /dev/null && DOCKER_INSTALLED=true
-    fi
-    
-    
-    # Start and enable Docker
-    $SUDO systemctl enable --now docker 2>/dev/null || $SUDO service docker start 2>/dev/null || true
-
-    
-    # Wait for Docker daemon to be ready
-    for i in $(seq 1 15); do
-        if docker info &>/dev/null; then
-            break
-        fi
-        sleep 1
-    done
+        case "$OS_ID" in
+            ubuntu|pop|linuxmint|elementary|zorin|kubuntu|lubuntu|xubuntu|neon)
+                DOCKER_REPO_URL="https://download.docker.com/linux/ubuntu"
+                REPO_METHOD="apt"
+                ;;
+            debian|raspbian|kali|bunsen*)
                 DOCKER_REPO_URL="https://download.docker.com/linux/debian"
                 REPO_METHOD="apt"
                 ;;
-            centos|almalinux|rocky|ol|scientific|eurolinux|virtuozzo)
-                DOCKER_REPO_URL="https://download.docker.com/linux/centos"
+            centos|almalinux|rocky|ol|scientific|eurolinux|virtuozzo|amzn|rhel|fedora)
+                DOCKER_REPO_URL="https://download.docker.com/linux/$( [[ "$OS_ID" =~ ^(fedora|rhel)$ ]] && echo "$OS_ID" || echo "centos" )"
                 REPO_METHOD="dnf"
-                ;;
-            rhel)
-                DOCKER_REPO_URL="https://download.docker.com/linux/rhel"
-                REPO_METHOD="dnf"
-                ;;
-            fedora|nobara)
-                DOCKER_REPO_URL="https://download.docker.com/linux/fedora"
-                REPO_METHOD="dnf"
-                ;;
-            amzn)
-                # Amazon Linux 2023+ uses dnf and is RHEL-based
-                DOCKER_REPO_URL="https://download.docker.com/linux/centos"
-                REPO_METHOD="dnf"
-                ;;
-            sles|opensuse*|arch|manjaro*)
-                log_error "Unsupported distribution: $OS_ID"
-                log_error "LogicPanel supports only Debian/Ubuntu (APT) and RHEL/CentOS/AlmaLinux/Rocky/Fedora (DNF/YUM)."
-                exit 1
                 ;;
             *)
-                # Try to determine by ID_LIKE
-                case "$OS_ID_LIKE" in
-                    *ubuntu*|*debian*)
-                        DOCKER_REPO_URL="https://download.docker.com/linux/ubuntu"
-                        REPO_METHOD="apt"
-                        ;;
-                    *rhel*|*centos*|*fedora*)
-                        DOCKER_REPO_URL="https://download.docker.com/linux/centos"
-                        REPO_METHOD="dnf"
-                        ;;
-                    *)
-                        log_error "Unsupported distribution"
-                        log_error "LogicPanel supports only:"
-                        log_error "  - Debian/Ubuntu and derivatives (APT)"
-                        log_error "  - RHEL/CentOS/AlmaLinux/Rocky/Fedora (DNF/YUM)"
-                        exit 1
-                        ;;
-                esac
+                if [[ "$OS_ID_LIKE" =~ "ubuntu" ]] || [[ "$OS_ID_LIKE" =~ "debian" ]]; then
+                    DOCKER_REPO_URL="https://download.docker.com/linux/ubuntu"
+                    REPO_METHOD="apt"
+                elif [[ "$OS_ID_LIKE" =~ "rhel" ]] || [[ "$OS_ID_LIKE" =~ "centos" ]] || [[ "$OS_ID_LIKE" =~ "fedora" ]]; then
+                    DOCKER_REPO_URL="https://download.docker.com/linux/centos"
+                    REPO_METHOD="dnf"
+                else
+                    log_error "Unsupported distribution. Please install Docker manually."
+                    exit 1
+                fi
                 ;;
         esac
         
-        log_info "Using installation method: $REPO_METHOD"
-        
-        # ── Method 1: APT-based (Ubuntu, Debian, derivatives) ──────────
-        if [ "$REPO_METHOD" = "apt" ] && [ "$DOCKER_INSTALLED" = false ]; then
-            log_info "Installing Docker via APT repository..."
-            
-            # Install prerequisites
+        if [ "$REPO_METHOD" = "apt" ]; then
             $SUDO apt-get update -qq
             $SUDO apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
-            
-            # Add Docker's official GPG key
             $SUDO install -m 0755 -d /etc/apt/keyrings
             curl -fsSL "${DOCKER_REPO_URL}/gpg" | $SUDO gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-            
-            # Determine the codename for the repo
-            if [ -n "${UBUNTU_CODENAME:-}" ]; then
-                CODENAME="$UBUNTU_CODENAME"
-            elif [ -n "${VERSION_CODENAME:-}" ]; then
-                CODENAME="$VERSION_CODENAME"
-            else
-                HAS_LSB=$(command -v lsb_release &> /dev/null && echo true || echo false)
-                if [ "$HAS_LSB" = true ]; then
-                    CODENAME=$(lsb_release -cs)
-                else
-                    # Fallback to common Ubuntu LTS
-                    CODENAME="jammy"
-                    log_warn "Could not detect codename, defaulting to: $CODENAME"
-                fi
-            fi
-            
-            # Add the Docker repository
+            local CODENAME=$(lsb_release -cs 2>/dev/null || echo "jammy")
             echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] ${DOCKER_REPO_URL} ${CODENAME} stable" | \
                 $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
-            
-            # Install Docker
             $SUDO apt-get update -qq
             $SUDO apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-            
-            command -v docker &> /dev/null && DOCKER_INSTALLED=true
-        fi
-        
-        # ── Method 2: DNF/YUM-based (RHEL, CentOS, AlmaLinux, Rocky, Fedora) ──
-        if [ "$REPO_METHOD" = "dnf" ] && [ "$DOCKER_INSTALLED" = false ]; then
-            log_info "Installing Docker via DNF/YUM repository..."
-            
-            # Prefer dnf over yum
-            if command -v dnf &> /dev/null; then
-                DNF_CMD="dnf"
-            else
-                DNF_CMD="yum"
-            fi
-            
-            # Install prerequisites
+        else
+            DNF_CMD=$(command -v dnf || echo "yum")
             $SUDO $DNF_CMD install -y yum-utils 2>/dev/null || true
-            
-            # Add Docker repository
             $SUDO $DNF_CMD config-manager --add-repo "${DOCKER_REPO_URL}/docker-ce.repo" 2>/dev/null || true
-            
-            # Install Docker
             $SUDO $DNF_CMD install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-            
-            command -v docker &> /dev/null && DOCKER_INSTALLED=true
         fi
         
-        
-        # Start and enable Docker
         $SUDO systemctl enable --now docker 2>/dev/null || $SUDO service docker start 2>/dev/null || true
-
-        
-        # Wait for Docker daemon to be ready
-        for i in $(seq 1 15); do
-            if docker info &>/dev/null; then
-                break
-            fi
-            sleep 1
-        done
-        
-        DOCKER_VER=$(docker --version 2>/dev/null | grep -oP '\d+\.\d+\.\d+' | head -1)
-        log_success "Docker installed successfully (v${DOCKER_VER})."
+        log_success "Docker installed successfully."
     fi
+
+    # Ensure Docker is accessible and running
+    if ! docker ps > /dev/null 2>&1; then
+        log_warn "Docker service is not accessible. Attempting to start..."
+        $SUDO systemctl start docker || $SUDO service docker start || true
+        sleep 3
+    fi
+    
+    DOCKER_VER=$(docker --version | grep -oP '\d+\.\d+\.\d+' | head -1)
+    log_success "Docker is ready (v${DOCKER_VER})"
 }
 
-# Call the function to ensure Docker is installed
-install_docker
+# Run Docker Check/Install
+check_docker
 
 # Install Git and other dependencies
 if ! command -v git &> /dev/null; then
     log_info "Installing Git..."
     if command -v dnf &> /dev/null; then
-        dnf install -y git
+        $SUDO dnf install -y git
     elif command -v yum &> /dev/null; then
-        yum install -y git
+        $SUDO yum install -y git
     elif command -v apt-get &> /dev/null; then
-        apt-get update && apt-get install -y git
+        $SUDO apt-get update && $SUDO apt-get install -y git
     elif command -v pacman &> /dev/null; then
-        pacman -Sy --noconfirm git
+        $SUDO pacman -Sy --noconfirm git
     elif command -v zypper &> /dev/null; then
-        zypper install -y git
+        $SUDO zypper install -y git
     else
         log_error "Could not install Git. Please install Git manually."
         exit 1
@@ -739,7 +402,17 @@ fi
 # Install curl if missing
 if ! command -v curl &> /dev/null; then
     log_info "Installing curl..."
-    $PKG_INSTALL curl
+    if command -v dnf &> /dev/null; then
+        $SUDO dnf install -y curl
+    elif command -v yum &> /dev/null; then
+        $SUDO yum install -y curl
+    elif command -v apt-get &> /dev/null; then
+        $SUDO apt-get update && $SUDO apt-get install -y curl
+    else
+        log_error "Could not install curl. Please install curl manually."
+        exit 1
+    fi
+    log_success "curl installed."
 fi
 
 # Docker Compose Plugin
@@ -1343,6 +1016,35 @@ if [ "$ALL_RUNNING" = false ]; then
     docker compose up -d
     sleep 5
 fi
+
+# ─── 4.5 Host Terminal SSH Setup ───
+log_info "Step 4.5: Configuring Host Terminal Access..."
+SSH_DIR="${INSTALL_DIR}/.ssh"
+mkdir -p "$SSH_DIR"
+chmod 700 "$SSH_DIR"
+
+if [ ! -f "${SSH_DIR}/id_rsa" ]; then
+    log_info "Generating internal SSH key for terminal access..."
+    ssh-keygen -t rsa -b 4096 -f "${SSH_DIR}/id_rsa" -N "" -q
+    chmod 600 "${SSH_DIR}/id_rsa"
+    log_success "SSH key generated."
+fi
+
+# Add public key to host's authorized_keys for root
+log_info "Authorizing internal key for host root access..."
+PUB_KEY=$(cat "${SSH_DIR}/id_rsa.pub")
+mkdir -p /root/.ssh
+chmod 700 /root/.ssh
+if ! grep -q "$PUB_KEY" /root/.ssh/authorized_keys 2>/dev/null; then
+    echo "$PUB_KEY" >> /root/.ssh/authorized_keys
+    chmod 600 /root/.ssh/authorized_keys
+    log_success "Host root access authorized."
+else
+    log_info "Host root access already authorized."
+fi
+
+# Ensure correct ownership for the mounted key inside container
+chown -R 33:33 "$SSH_DIR" # 33 is www-data
 
 # Final initialization note
 log_info "Step 5: Finalizing Backend Services..."
