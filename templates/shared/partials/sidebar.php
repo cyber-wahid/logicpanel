@@ -17,6 +17,12 @@
             <span>File Manager</span>
         </a>
 
+        <a href="<?= $base_url ?? '' ?>/apps/terminal"
+            class="lp-nav-item <?= ($current_page ?? '') === 'apps_terminal' ? 'active' : '' ?>">
+            <i data-lucide="terminal"></i>
+            <span>Terminal</span>
+        </a>
+
         <div class="lp-nav-section">Special</div>
 
 
