@@ -1,10 +1,8 @@
-<div align="center">
-  <img src="https://raw.githubusercontent.com/cyber-wahid/logicpanel/main/public/assets/images/logo-dark.png" alt="LogicPanel Logo" width="250" />
-  <h1>LogicPanel</h1>
+<h1>LogicPanel</h1>
   <p><b>The Next-Generation Hosting Control Panel for Modern Web Apps.</b></p>
   <p>
     <a href="https://github.com/cyber-wahid/logicpanel/releases"><img src="https://img.shields.io/github/v/release/cyber-wahid/logicpanel" alt="Latest Release" /></a>
-    <img src="https://img.shields.io/badge/PHP-8.2+-blue.svg" alt="PHP 8.2+" />
+    <img src="https://img.shields.io/badge/PHP-8.2+-blue.svg" alt="PHP 8.3+" />
     <img src="https://img.shields.io/badge/Docker-Powered-2496ED.svg" alt="Docker Powered" />
     <img src="https://img.shields.io/badge/HTTP%2F3-Supported-success.svg" alt="HTTP/3 Supported" />
   </p>
@@ -13,6 +11,12 @@
 ---
 
 **LogicPanel** is an ultra-fast, modern, and highly secure web hosting control panel designed for developers and agencies. Built with pure Docker isolation, it natively supports **Node.js**, **Python**, and **N8n**, alongside classic databases and robust SSL management out of the box. Say goodbye to heavy legacy panels.
+
+<img width="1366" height="644" alt="image" src="https://github.com/user-attachments/assets/cd3a464b-70bb-4bde-9779-d18ac33dec4f" />
+
+<img width="1366" height="644" alt="image" src="https://github.com/user-attachments/assets/eeec83ee-4fc9-42f7-8338-fe8d02a3bcf7" />
+
+
 
 ## 🌟 Key Features
 
