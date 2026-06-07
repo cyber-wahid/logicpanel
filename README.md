@@ -2,7 +2,7 @@
   <p><b>The Next-Generation Hosting Control Panel for Modern Web Apps.</b></p>
   <p>
     <a href="https://github.com/cyber-wahid/logicpanel/releases"><img src="https://img.shields.io/github/v/release/cyber-wahid/logicpanel" alt="Latest Release" /></a>
-    <img src="https://img.shields.io/badge/PHP-8.2+-blue.svg" alt="PHP 8.3+" />
+    <img src="https://img.shields.io/badge/PHP-8.3+-blue.svg" alt="PHP 8.3+" />
     <img src="https://img.shields.io/badge/Docker-Powered-2496ED.svg" alt="Docker Powered" />
     <img src="https://img.shields.io/badge/HTTP%2F3-Supported-success.svg" alt="HTTP/3 Supported" />
   </p>
@@ -66,7 +66,7 @@ Once installed, access your panels:
 
 ## 🏗️ Technical Stack
 
-*   **Backend Interface**: PHP 8.2 (Slim Framework 4, Eloquent ORM)
+*   **Backend Interface**: PHP 8.3 (Slim Framework 4, Eloquent ORM)
 *   **Frontend**: Vanilla JS, optimized custom CSS (Classic UI)
 *   **Core Engine**: Docker Engine, Docker Compose
 *   **Proxy & Routing**: Traefik v3
