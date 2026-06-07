@@ -51,11 +51,11 @@ class ResellerController
         $package = $resellerUser->package;
         
         // Count users created by this reseller
-        $totalUsers = User::where('created_by', $resellerId)->where('role', 'user')->count();
+        $totalUsers = User::where('owner_id', $resellerId)->where('role', 'user')->count();
         $maxUsers = $package->max_accounts ?? 0; // 0 = unlimited
         
         // Calculate total disk allocated to reseller's users
-        $users = User::where('created_by', $resellerId)->where('role', 'user')->with('package')->get();
+        $users = User::where('owner_id', $resellerId)->where('role', 'user')->with('package')->get();
         $totalDiskAllocated = 0;
         $totalBandwidthAllocated = 0;
         
