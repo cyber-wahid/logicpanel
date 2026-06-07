@@ -4,7 +4,7 @@
     "type": "project",
     "license": "GPL-3.0-or-later",
     "require": {
-        "php": "^8.2",
+        "php": "^8.3",
         "dragonmantank/cron-expression": "^3.6",
         "firebase/php-jwt": "^6.10",
         "guzzlehttp/guzzle": "^7.8",

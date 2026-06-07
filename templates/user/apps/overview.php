@@ -17,6 +17,7 @@ ob_start();
                     <option value="all">All Types</option>
                     <option value="nodejs">Node.js</option>
                     <option value="python">Python</option>
+                    <option value="n8n">n8n</option>
                 </select>
             </div>
 
@@ -35,6 +36,9 @@ ob_start();
                         </a>
                         <a href="<?= $base_url ?? '' ?>/apps/python" class="dropdown-item">
                             <i data-lucide="codepen" style="color: #306998;"></i> Python
+                        </a>
+                        <a href="<?= $base_url ?? '' ?>/apps/n8n" class="dropdown-item">
+                            <i data-lucide="workflow" style="color: #EA4B71;"></i> n8n
                         </a>
                     </div>
                 </div>
@@ -555,6 +559,7 @@ ob_start();
     function getAppIcon(type) {
         if (type === 'nodejs') return '<i data-lucide="hexagon" style="width:16px; height:16px; color:#3C873A;"></i>';
         if (type === 'python') return '<i data-lucide="codepen" style="width:16px; height:16px; color:#306998;"></i>';
+        if (type === 'n8n') return '<i data-lucide="workflow" style="width:16px; height:16px; color:#EA4B71;"></i>';
         return '<i data-lucide="box" style="width:16px; height:16px;"></i>';
     }
 

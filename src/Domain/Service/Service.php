@@ -64,4 +64,9 @@ class Service extends Model
     {
         return $this->type === 'python';
     }
+
+    public function isN8n(): bool
+    {
+        return $this->type === 'n8n';
+    }
 }

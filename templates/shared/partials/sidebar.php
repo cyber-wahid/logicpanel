@@ -41,6 +41,12 @@
             <span>Cron Jobs</span>
         </a>
 
+        <a href="<?= $base_url ?? '' ?>/apps/n8n"
+            class="lp-nav-item <?= ($current_page ?? '') === 'apps_n8n' ? 'active' : '' ?>">
+            <i data-lucide="workflow"></i>
+            <span>n8n Workflows</span>
+        </a>
+
         <?php if (isset($service_id)): ?>
             <!-- Active Service Context -->
             <div class="lp-nav-section">Service Management</div>

@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS services (
     user_id INT UNSIGNED NOT NULL,
     name VARCHAR(100) NOT NULL,
     domain VARCHAR(255),
-    type ENUM('nodejs', 'python', 'static', 'php') NOT NULL DEFAULT 'nodejs',
+    type ENUM('nodejs', 'python', 'static', 'php', 'n8n') NOT NULL DEFAULT 'nodejs',
     status ENUM('creating', 'deploying', 'running', 'stopped', 'error', 'suspended') DEFAULT 'creating',
     
     -- Container info

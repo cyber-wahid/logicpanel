@@ -399,6 +399,11 @@ if (
     $current_page = 'apps_nodejs';
     include 'templates/user/apps/nodejs.php';
 
+} elseif ($path === 'apps/n8n') {
+    $title = 'n8n Workflow Automation';
+    $current_page = 'apps_n8n';
+    include 'templates/user/apps/n8n.php';
+
 } elseif ($path === 'apps/python') {
     $title = 'Python Applications';
     $current_page = 'apps_python';

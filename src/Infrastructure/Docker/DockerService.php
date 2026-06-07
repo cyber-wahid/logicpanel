@@ -158,8 +158,12 @@ class DockerService
             $hostRules = array_map(fn($d) => "Host(`{$d}`)", $validDomains);
             $traefikRule = implode(' || ', $hostRules);
 
-            // App type-specific port (Node.js: 3000, Python: 5000)
-            $containerPort = ($appType === 'python') ? '5000' : '3000';
+            // App type-specific port (Node.js: 3000, Python: 5000, n8n: 5678)
+            $containerPort = match ($appType) {
+                'python' => '5000',
+                'n8n' => '5678',
+                default => '3000',
+            };
 
             // Resource Management: Shared/Burstable Model
             // 1. Memory: Reserve package limit (Soft), but allow bursting up to 4x (Hard)
@@ -251,6 +255,16 @@ class DockerService
                 $envVars['PATH'] = '/tmp/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
             }
 
+            // n8n-specific env vars (DB connection, encryption, webhook URL)
+            if ($appType === 'n8n') {
+                $envVars['N8N_HOST'] = '0.0.0.0';
+                $envVars['N8N_PORT'] = '5678';
+                $envVars['N8N_PROTOCOL'] = 'https';
+                $envVars['WEBHOOK_URL'] = "https://{$domain}/";
+                $envVars['N8N_ENCRYPTION_KEY'] = $envVars['N8N_ENCRYPTION_KEY'] ?? bin2hex(random_bytes(16));
+                $envVars['TZ'] = 'UTC';
+            }
+
             foreach ($envVars as $key => $value) {
                 $command[] = '-e';
                 $command[] = "{$key}={$value}";
@@ -259,7 +273,10 @@ class DockerService
             // Add image and start command based on type
             $command[] = $image;
 
-            if ($appType === 'nodejs') {
+            // n8n uses the image's built-in entrypoint — no custom command needed
+            if ($appType === 'n8n') {
+                // No command appended — n8n image handles startup via its own entrypoint
+            } elseif ($appType === 'nodejs') {
                 $command[] = 'sh';
                 $command[] = '-c';
                 // Sequential command execution with proper error handling

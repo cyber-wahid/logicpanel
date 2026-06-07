@@ -165,6 +165,12 @@ ob_start();
                         </div>
                         <span class="tool-name-minimal">Python App</span>
                     </a>
+                    <a href="<?= $base_url ?? '' ?>/apps/n8n" class="tool-card-minimal">
+                        <div class="tool-icon-minimal">
+                            <i data-lucide="workflow"></i>
+                        </div>
+                        <span class="tool-name-minimal">n8n Workflows</span>
+                    </a>
                     <a href="<?= $base_url ?? '' ?>/apps/terminal" class="tool-card-minimal">
                         <div class="tool-icon-minimal">
                             <i data-lucide="terminal"></i>
