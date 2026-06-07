@@ -91,7 +91,20 @@ ob_start();
                             ${s.user || s.user_id}
                             ${s.user_owner ? `<br><small class="text-muted" title="User created by reseller"><i data-lucide="user-check" style="width:12px;height:12px;"></i> ${s.user_owner.username}</small>` : ''}
                         </td>
-                        <td><span class="badge badge-secondary">${s.type}</span></td>
+                        <td>
+                            <div><span class="badge badge-secondary">${s.type}</span></div>
+                            ${s.databases && s.databases.length > 0 ? `
+                                <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
+                                    ${s.databases.map(db => `
+                                        <span style="font-size:11px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; padding:2px 8px; display:inline-flex; align-items:center; gap:4px;">
+                                            ${db.type === 'postgresql' ? '<i data-lucide="database" style="width:10px; height:10px; color:#336791;"></i> Postgres' : 
+                                              db.type === 'redis' ? '<i data-lucide="database" style="width:10px; height:10px; color:#DC382D;"></i> Redis' : 
+                                              '<i data-lucide="database" style="width:10px; height:10px;"></i> ' + db.type}
+                                        </span>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </td>
                         <td><span class="badge ${statusClass}">${s.status}</span></td>
                         <td><code style="background:var(--bg-input); padding:2px 4px; border-radius:3px;">${(s.container_id || 'N/A').substring(0, 12)}</code></td>
                         <td style="text-align: right;">

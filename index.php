@@ -442,6 +442,22 @@ if (
     $current_page = 'databases_mongodb';
     include 'templates/user/databases/mongodb.php';
 
+} elseif ($path === 'dns') {
+    $title = 'DNS Manager';
+    $current_page = 'dns_index';
+    include 'templates/user/dns/index.php';
+
+} elseif (preg_match('/^dns\/manage\/(\d+)$/', $path, $matches)) {
+    $title = 'Manage DNS Records';
+    $current_page = 'dns_manage';
+    $_GET['domain_id'] = $matches[1];
+    include 'templates/user/dns/manage.php';
+
+} elseif ($path === 'ssl') {
+    $title = 'SSL/TLS Manager';
+    $current_page = 'ssl';
+    include 'templates/user/ssl/index.php';
+
 } elseif (strpos($path, 'databases') === 0) {
     if ($path === 'databases') {
         header("Location: $base_url/databases/mysql");

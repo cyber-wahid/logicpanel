@@ -257,12 +257,21 @@ class DockerService
 
             // n8n-specific env vars (DB connection, encryption, webhook URL)
             if ($appType === 'n8n') {
-                $envVars['N8N_HOST'] = '0.0.0.0';
-                $envVars['N8N_PORT'] = '5678';
-                $envVars['N8N_PROTOCOL'] = 'https';
-                $envVars['WEBHOOK_URL'] = "https://{$domain}/";
+                $envVars['N8N_HOST']           = '0.0.0.0';
+                $envVars['N8N_PORT']           = '5678';
+                $envVars['N8N_PROTOCOL']       = 'https';
+                $envVars['WEBHOOK_URL']        = "https://{$domain}/";
                 $envVars['N8N_ENCRYPTION_KEY'] = $envVars['N8N_ENCRYPTION_KEY'] ?? bin2hex(random_bytes(16));
-                $envVars['TZ'] = 'UTC';
+                $envVars['TZ']                 = 'UTC';
+
+                // CRITICAL: Tell n8n to use PostgreSQL (default is SQLite)
+                $envVars['DB_TYPE']            = 'postgresdb';
+
+                // n8n runner & task settings
+                $envVars['N8N_RUNNERS_ENABLED']         = 'true';
+                $envVars['EXECUTIONS_MODE']              = 'regular';
+                $envVars['N8N_DIAGNOSTICS_ENABLED']     = 'false';
+                $envVars['N8N_VERSION_NOTIFICATIONS_ENABLED'] = 'false';
             }
 
             foreach ($envVars as $key => $value) {

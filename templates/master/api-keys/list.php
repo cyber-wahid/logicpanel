@@ -233,16 +233,13 @@ ob_start();
         width: 90%;
         max-width: 480px;
         padding: 0;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        transform: translateY(10px);
-        transition: transform 0.2s ease;
         display: flex;
         flex-direction: column;
         border: 1px solid rgba(0, 0, 0, 0.1);
     }
 
     .lp-modal-overlay.active .lp-modal-box {
-        transform: translateY(0);
+        /* No transform for classic feel */
     }
 
     .lp-modal-header {
@@ -309,12 +306,10 @@ ob_start();
 
     @keyframes slideDown {
         from {
-            transform: translateY(-20px) scale(0.98);
             opacity: 0;
         }
 
         to {
-            transform: translateY(0) scale(1);
             opacity: 1;
         }
     }
@@ -323,7 +318,6 @@ ob_start();
     [data-theme="dark"] .lp-modal-box {
         background: var(--bg-card);
         border-color: var(--border-color);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     }
 
     [data-theme="dark"] .lp-modal-header {

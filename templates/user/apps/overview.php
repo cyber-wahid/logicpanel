@@ -484,7 +484,8 @@ ob_start();
                 tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading applications.</td></tr>';
             }
         } finally {
-            if (refreshIcon) refreshIcon.classList.remove('spin-anim');
+            const currentRefreshIcon = document.getElementById('refresh-icon');
+            if (currentRefreshIcon) currentRefreshIcon.classList.remove('spin-anim');
         }
     }
 
@@ -513,9 +514,22 @@ ob_start();
                 </div>
             </td>
             <td>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    ${getAppIcon(app.type)}
-                    <span style="text-transform:capitalize; font-size:13px;">${app.type}</span>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        ${getAppIcon(app.type)}
+                        <span style="text-transform:capitalize; font-size:13px; font-weight:500;">${app.type}</span>
+                    </div>
+                    ${app.databases && app.databases.length > 0 ? `
+                        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
+                            ${app.databases.map(db => `
+                                <span style="font-size:11px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; padding:2px 8px; display:inline-flex; align-items:center; gap:4px;">
+                                    ${db.type === 'postgresql' ? '<i data-lucide="database" style="width:10px; height:10px; color:#336791;"></i> Postgres' : 
+                                      db.type === 'redis' ? '<i data-lucide="database" style="width:10px; height:10px; color:#DC382D;"></i> Redis' : 
+                                      '<i data-lucide="database" style="width:10px; height:10px;"></i> ' + db.type}
+                                </span>
+                            `).join('')}
+                        </div>
+                    ` : ''}
                 </div>
             </td>
             <td>
@@ -557,9 +571,9 @@ ob_start();
     }
 
     function getAppIcon(type) {
-        if (type === 'nodejs') return '<i data-lucide="hexagon" style="width:16px; height:16px; color:#3C873A;"></i>';
-        if (type === 'python') return '<i data-lucide="codepen" style="width:16px; height:16px; color:#306998;"></i>';
-        if (type === 'n8n') return '<i data-lucide="workflow" style="width:16px; height:16px; color:#EA4B71;"></i>';
+        if (type === 'nodejs') return '<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg" style="width:16px; height:16px;" alt="Node.js">';
+        if (type === 'python') return '<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" style="width:16px; height:16px;" alt="Python">';
+        if (type === 'n8n') return '<img src="https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/n8n-color.png" style="width:16px; height:16px; border-radius:3px;" alt="n8n">';
         return '<i data-lucide="box" style="width:16px; height:16px;"></i>';
     }
 

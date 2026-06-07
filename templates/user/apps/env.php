@@ -401,5 +401,5 @@ ob_start();
 
 <?php
 $content = ob_get_clean();
-include __DIR__ . '/../layouts/main.php';
+include __DIR__ . '/../../shared/layouts/main.php';
 ?>

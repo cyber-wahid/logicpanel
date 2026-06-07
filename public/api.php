@@ -21,35 +21,53 @@ ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
 error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
 
-// Catch all errors and output as JSON
-// Catch all errors and output as JSON after logging to stderr
-set_error_handler(function ($errno, $errstr, $errfile, $errline) {
-    if (!(error_reporting() & $errno)) {
-        // This error code is not included in error_reporting
-        return;
-    }
+// ------------------------------------------------------------------
+// Dedicated log paths (must match LoggingService::resolveLogDir())
+// ------------------------------------------------------------------
+$_LP_LOG_BASE = is_dir('/var/www/html/storage/logs')
+    ? '/var/www/html/storage/logs'
+    : (realpath(__DIR__ . '/../storage/logs') ?: __DIR__ . '/../storage/logs');
 
-    // Log to stderr for Docker
-    error_log("PHP Error: [$errno] $errstr in $errfile:$errline");
+$_LP_PHP_LOG = $_LP_LOG_BASE . '/php/php-' . date('Y-m-d') . '.log';
+$_LP_API_LOG = $_LP_LOG_BASE . '/api/api-' . date('Y-m-d') . '.log';
+
+// Ensure directories exist
+foreach (['php', 'api'] as $_lp_ch) {
+    $d = $_LP_LOG_BASE . '/' . $_lp_ch;
+    if (!is_dir($d)) @mkdir($d, 0775, true);
+}
+
+/** Write a timestamped line to a log file + stderr */
+function lp_write_log(string $file, string $level, string $msg): void {
+    $line = '[' . date('Y-m-d H:i:s') . '] ' . $level . ': ' . $msg . PHP_EOL;
+    @file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
+    error_log(rtrim($line)); // mirror to Docker stderr
+}
+
+// Catch all PHP errors → storage/logs/php/
+set_error_handler(function ($errno, $errstr, $errfile, $errline) use ($_LP_PHP_LOG) {
+    if (!(error_reporting() & $errno)) return;
+
+    lp_write_log($_LP_PHP_LOG, 'PHP_ERROR', "[$errno] $errstr in $errfile:$errline");
 
     http_response_code(500);
     header('Content-Type: application/json');
     echo json_encode([
-        'error' => 'PHP Error',
+        'error'   => 'PHP Error',
         'message' => $errstr,
-        'file' => basename($errfile), // Hide full path
-        'line' => $errline
+        'file'    => basename($errfile),
+        'line'    => $errline,
     ]);
     exit;
 });
 
-// Debug logging to stderr for Docker visibility
+// Debug logging to stderr + access log
 $debugInfo = [
-    'timestamp' => date('Y-m-d H:i:s'),
+    'timestamp'   => date('Y-m-d H:i:s'),
     'request_uri' => $_SERVER['REQUEST_URI'] ?? 'unknown',
-    'method' => $_SERVER['REQUEST_METHOD'] ?? 'unknown'
+    'method'      => $_SERVER['REQUEST_METHOD'] ?? 'unknown',
 ];
-error_log("API Debug: " . json_encode($debugInfo));
+error_log("API Request: " . json_encode($debugInfo));
 
 header('X-API-Reached: true');
 
@@ -218,6 +236,16 @@ $container->set(LogicPanel\Application\Controllers\SystemController::class, func
     return new LogicPanel\Application\Controllers\SystemController($container->get(DockerService::class));
 });
 
+$container->set(\LogicPanel\Infrastructure\Dns\CoreDnsService::class, function () {
+    return new \LogicPanel\Infrastructure\Dns\CoreDnsService();
+});
+
+$container->set(\LogicPanel\Application\Controllers\DnsController::class, function ($container) {
+    return new \LogicPanel\Application\Controllers\DnsController(
+        $container->get(\LogicPanel\Infrastructure\Dns\CoreDnsService::class)
+    );
+});
+
 // Set container to create App with on AppFactory
 AppFactory::setContainer($container);
 $app = AppFactory::create();
@@ -285,8 +313,9 @@ try {
     // Run app
     $app->run();
 } catch (\Throwable $e) {
-    // Log error to stderr directly
-    error_log("API Fatal Error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+    // Log to dedicated API error log + stderr
+    $errMsg = $e->getMessage() . "\n" . $e->getTraceAsString();
+    lp_write_log($_LP_API_LOG, 'FATAL', $errMsg);
 
     if (ob_get_level())
         ob_end_clean();
@@ -294,9 +323,9 @@ try {
     header('Content-Type: application/json');
     http_response_code(500);
     echo json_encode([
-        'error' => 'API Fatal Error',
+        'error'   => 'API Fatal Error',
         'message' => $e->getMessage(),
-        'trace' => ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? $e->getTraceAsString() : null
+        'trace'   => ($_ENV['APP_DEBUG'] ?? 'false') === 'true' ? $e->getTraceAsString() : null,
     ]);
     exit;
 }

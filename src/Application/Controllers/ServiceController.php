@@ -32,7 +32,7 @@ class ServiceController
             if ($perPage > 100)
                 $perPage = 100; // Cap per page
 
-            $query = Service::where('user_id', $userId);
+            $query = Service::with('databases')->where('user_id', $userId);
 
             $total = $query->count();
             $services = $query->skip(($page - 1) * $perPage)
@@ -81,6 +81,12 @@ class ServiceController
                         'container_id' => $service->container_id,
                         'version' => $service->runtime_version,
                         'created_at' => $service->created_at->toIso8601String(),
+                        'databases' => $service->databases->map(function ($db) {
+                            return [
+                                'name' => $db->db_name,
+                                'type' => $db->db_type
+                            ];
+                        })->toArray(),
                     ];
                 }),
                 'pagination' => [
@@ -271,34 +277,38 @@ class ServiceController
 
             // n8n: Provision a PostgreSQL database for the workflow engine
             if ($type === 'n8n') {
+                // Generate a secure temporary password to satisfy NOT NULL constraint
+                $tempPassword = bin2hex(random_bytes(16));
+
                 $n8nDb = new \LogicPanel\Domain\Database\Database();
-                $n8nDb->user_id = $userId;
+                $n8nDb->user_id    = $userId;
                 $n8nDb->service_id = $service->id;
-                $n8nDb->db_type = 'postgresql';
-                $n8nDb->db_name = "n8n_{$service->id}";
-                $n8nDb->db_user = "n8n_{$service->id}";
-                $n8nDb->db_host = $_ENV['POSTGRES_INTERNAL_HOST'] ?? 'postgres';
-                $n8nDb->db_port = (int) ($_ENV['POSTGRES_INTERNAL_PORT'] ?? 5432);
-                $n8nDb->status = 'creating';
+                $n8nDb->db_type    = 'postgresql';
+                $n8nDb->db_name    = "n8n_{$service->id}";
+                $n8nDb->db_user    = "n8n_{$service->id}";
+                $n8nDb->db_host    = $_ENV['POSTGRES_INTERNAL_HOST'] ?? 'postgres';
+                $n8nDb->db_port    = (int) ($_ENV['POSTGRES_INTERNAL_PORT'] ?? 5432);
+                $n8nDb->db_password = $tempPassword; // placeholder — satisfies NOT NULL
+                $n8nDb->status     = 'creating';
                 $n8nDb->save();
 
                 // Call provisioner to create the actual PostgreSQL database
-                $dbProvisionerUrl = $_ENV['DB_PROVISIONER_URL'] ?? 'http://db-provisioner:3001';
+                $dbProvisionerUrl    = $_ENV['DB_PROVISIONER_URL'] ?? 'http://db-provisioner:3001';
                 $dbProvisionerSecret = $_ENV['DB_PROVISIONER_SECRET'] ?? '';
 
                 $provisionerClient = new \GuzzleHttp\Client([
                     'base_uri' => $dbProvisionerUrl,
-                    'timeout' => 30,
+                    'timeout'  => 30,
                 ]);
 
                 $provResponse = $provisionerClient->post('/internal/db/postgresql/create', [
                     'headers' => [
                         'Authorization' => "Bearer {$dbProvisionerSecret}",
-                        'Content-Type' => 'application/json',
+                        'Content-Type'  => 'application/json',
                     ],
                     'json' => [
                         'userId' => $userId,
-                        'dbId' => $n8nDb->id,
+                        'dbId'   => $n8nDb->id,
                     ],
                 ]);
 
@@ -308,18 +318,18 @@ class ServiceController
                     throw new \RuntimeException('Failed to provision PostgreSQL database for n8n');
                 }
 
-                // Update the database record with actual credentials
-                $n8nDb->db_name = $provBody['database']['name'];
-                $n8nDb->db_user = $provBody['database']['user'];
+                // Update the database record with actual credentials from provisioner
+                $n8nDb->db_name     = $provBody['database']['name'];
+                $n8nDb->db_user     = $provBody['database']['user'];
                 $n8nDb->db_password = $provBody['database']['password'];
-                $n8nDb->status = 'active';
+                $n8nDb->status      = 'active';
                 $n8nDb->save();
 
                 // Set n8n database env vars
-                $envVars['DB_POSTGRESDB_HOST'] = $provBody['database']['host'];
-                $envVars['DB_POSTGRESDB_PORT'] = (string) $provBody['database']['port'];
+                $envVars['DB_POSTGRESDB_HOST']     = $provBody['database']['host'];
+                $envVars['DB_POSTGRESDB_PORT']     = (string) $provBody['database']['port'];
                 $envVars['DB_POSTGRESDB_DATABASE'] = $provBody['database']['name'];
-                $envVars['DB_POSTGRESDB_USER'] = $provBody['database']['user'];
+                $envVars['DB_POSTGRESDB_USER']     = $provBody['database']['user'];
                 $envVars['DB_POSTGRESDB_PASSWORD'] = $provBody['database']['password'];
             }
 

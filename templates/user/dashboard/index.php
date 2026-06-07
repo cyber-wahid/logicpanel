@@ -124,20 +124,20 @@ ob_start();
             <div class="section-content-minimal">
                 <div class="tools-grid-minimal">
                     <a href="<?= $base_url ?? '' ?>/databases/mysql" class="tool-card-minimal">
-                        <div class="tool-icon-minimal">
-                            <i data-lucide="database"></i>
+                        <div class="tool-icon-minimal" style="background: transparent; color: inherit;">
+                            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mysql/mysql-original.svg" style="width:22px; height:22px;" alt="MySQL">
                         </div>
                         <span class="tool-name-minimal">MySQL</span>
                     </a>
                     <a href="<?= $base_url ?? '' ?>/databases/postgresql" class="tool-card-minimal">
-                        <div class="tool-icon-minimal">
-                            <i data-lucide="database"></i>
+                        <div class="tool-icon-minimal" style="background: transparent; color: inherit;">
+                            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-original.svg" style="width:22px; height:22px;" alt="PostgreSQL">
                         </div>
                         <span class="tool-name-minimal">PostgreSQL</span>
                     </a>
                     <a href="<?= $base_url ?? '' ?>/databases/mongodb" class="tool-card-minimal">
-                        <div class="tool-icon-minimal">
-                            <i data-lucide="database"></i>
+                        <div class="tool-icon-minimal" style="background: transparent; color: inherit;">
+                            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mongodb/mongodb-original.svg" style="width:22px; height:22px;" alt="MongoDB">
                         </div>
                         <span class="tool-name-minimal">MongoDB</span>
                     </a>
@@ -154,29 +154,24 @@ ob_start();
             <div class="section-content-minimal">
                 <div class="tools-grid-minimal">
                     <a href="<?= $base_url ?? '' ?>/apps/nodejs" class="tool-card-minimal">
-                        <div class="tool-icon-minimal">
-                            <i data-lucide="hexagon"></i>
+                        <div class="tool-icon-minimal" style="background: transparent; color: inherit;">
+                            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg" style="width:22px; height:22px;" alt="Node.js">
                         </div>
                         <span class="tool-name-minimal">Node.js App</span>
                     </a>
                     <a href="<?= $base_url ?? '' ?>/apps/python" class="tool-card-minimal">
-                        <div class="tool-icon-minimal">
-                            <i data-lucide="codepen"></i>
+                        <div class="tool-icon-minimal" style="background: transparent; color: inherit;">
+                            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" style="width:22px; height:22px;" alt="Python">
                         </div>
                         <span class="tool-name-minimal">Python App</span>
                     </a>
                     <a href="<?= $base_url ?? '' ?>/apps/n8n" class="tool-card-minimal">
-                        <div class="tool-icon-minimal">
-                            <i data-lucide="workflow"></i>
+                        <div class="tool-icon-minimal" style="background: transparent; color: inherit;">
+                            <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/n8n-color.png" style="width:22px; height:22px; border-radius: 4px;" alt="n8n">
                         </div>
                         <span class="tool-name-minimal">n8n Workflows</span>
                     </a>
-                    <a href="<?= $base_url ?? '' ?>/apps/terminal" class="tool-card-minimal">
-                        <div class="tool-icon-minimal">
-                            <i data-lucide="terminal"></i>
-                        </div>
-                        <span class="tool-name-minimal">Terminal</span>
-                    </a>
+
                 </div>
             </div>
         </div>
@@ -195,6 +190,7 @@ ob_start();
                         </div>
                         <span class="tool-name-minimal">Backup Wizard</span>
                     </a>
+
                     <a href="<?= $base_url ?? '' ?>/domains" class="tool-card-minimal">
                         <div class="tool-icon-minimal">
                             <i data-lucide="globe"></i>

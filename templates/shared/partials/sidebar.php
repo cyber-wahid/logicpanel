@@ -17,10 +17,19 @@
             <span>File Manager</span>
         </a>
 
-        <a href="<?= $base_url ?? '' ?>/apps/terminal"
-            class="lp-nav-item <?= ($current_page ?? '') === 'terminal' ? 'active' : '' ?>">
-            <i data-lucide="terminal"></i>
-            <span>Terminal</span>
+        <div class="lp-nav-section">Special</div>
+
+
+        <a href="<?= $base_url ?? '' ?>/dns"
+            class="lp-nav-item <?= str_starts_with($current_page ?? '', 'dns_') ? 'active' : '' ?>">
+            <i data-lucide="server-cog"></i>
+            <span>DNS Manager</span>
+        </a>
+
+        <a href="<?= $base_url ?? '' ?>/ssl"
+            class="lp-nav-item <?= ($current_page ?? '') === 'ssl' ? 'active' : '' ?>">
+            <i data-lucide="lock"></i>
+            <span>SSL/TLS Status</span>
         </a>
 
         <a href="<?= $base_url ?? '' ?>/domains"

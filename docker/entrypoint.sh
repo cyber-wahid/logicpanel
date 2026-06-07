@@ -69,6 +69,23 @@ if [ -d /var/www/html/docker/traefik/apps ]; then
 fi
 echo "✓ Permissions fixed for config, storage, and traefik"
 
+# Create & fix dedicated log directories
+echo "=== Setting Up Log Directories ==="
+LOG_BASE="/var/www/html/storage/logs"
+for LOG_DIR in app api php access; do
+    mkdir -p "${LOG_BASE}/${LOG_DIR}" 2>/dev/null || true
+    chown -R www-data:www-data "${LOG_BASE}/${LOG_DIR}" 2>/dev/null || true
+    chmod -R 775 "${LOG_BASE}/${LOG_DIR}" 2>/dev/null || true
+done
+# Configure PHP to write errors to dedicated file
+PHP_ERROR_LOG="${LOG_BASE}/php/php-errors.log"
+touch "$PHP_ERROR_LOG" 2>/dev/null || true
+chown www-data:www-data "$PHP_ERROR_LOG" 2>/dev/null || true
+echo "error_log = ${PHP_ERROR_LOG}" >> /usr/local/etc/php/conf.d/logicpanel-logging.ini 2>/dev/null || \
+    echo "error_log = ${PHP_ERROR_LOG}" >> /etc/php/*/cli/conf.d/10-logicpanel.ini 2>/dev/null || true
+echo "log_errors = On" >> /usr/local/etc/php/conf.d/logicpanel-logging.ini 2>/dev/null || true
+echo "✓ Log directories ready: ${LOG_BASE}/{app,api,php,access}/"
+
 # Initialize settings.json from environment if needed
 echo "=== Checking Settings ==="
 SETTINGS_FILE="/var/www/html/config/settings.json"

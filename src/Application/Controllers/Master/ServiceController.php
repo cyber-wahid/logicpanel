@@ -25,7 +25,7 @@ class ServiceController
     public function index(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $currentUser = $request->getAttribute('user');
-        $query = Service::with(['user', 'user.owner']);
+        $query = Service::with(['user', 'user.owner', 'databases']);
 
         if ($currentUser && $currentUser->role === 'reseller') {
             $query->whereHas('user', function ($q) use ($currentUser) {
@@ -54,6 +54,12 @@ class ServiceController
                 'status' => $svc->status,
                 'container_id' => $svc->container_id,
                 'created_at' => $svc->created_at->toIso8601String(),
+                'databases' => $svc->databases->map(function ($db) {
+                    return [
+                        'name' => $db->db_name,
+                        'type' => $db->db_type
+                    ];
+                })->toArray(),
             ];
         });
 

@@ -1,94 +1,97 @@
-# LogicPanel - Production Release (v3.1) 🚀
-
-> **The ultimate hosting control panel for Node.js and Python developers.**
-> LogicPanel provides a modern, secure, and automated environment to deploy, manage, and scale your applications effortlessly with full Docker isolation and Traefik-powered SSL.
+<div align="center">
+  <img src="https://raw.githubusercontent.com/cyber-wahid/logicpanel/main/public/assets/images/logo-dark.png" alt="LogicPanel Logo" width="250" />
+  <h1>LogicPanel</h1>
+  <p><b>The Next-Generation Hosting Control Panel for Modern Web Apps.</b></p>
+  <p>
+    <a href="https://github.com/cyber-wahid/logicpanel/releases"><img src="https://img.shields.io/github/v/release/cyber-wahid/logicpanel" alt="Latest Release" /></a>
+    <img src="https://img.shields.io/badge/PHP-8.2+-blue.svg" alt="PHP 8.2+" />
+    <img src="https://img.shields.io/badge/Docker-Powered-2496ED.svg" alt="Docker Powered" />
+    <img src="https://img.shields.io/badge/HTTP%2F3-Supported-success.svg" alt="HTTP/3 Supported" />
+  </p>
+</div>
 
 ---
 
-## ⚡ Quick Installation (2 minutes)
+**LogicPanel** is an ultra-fast, modern, and highly secure web hosting control panel designed for developers and agencies. Built with pure Docker isolation, it natively supports **Node.js**, **Python**, and **N8n**, alongside classic databases and robust SSL management out of the box. Say goodbye to heavy legacy panels.
 
-### Prerequisites
-- Clean Linux VPS (Ubuntu 20.04+, Debian 11+, RHEL/Alma 8/9, Fedora 36+)
-- Root access
-- Domain pointing to server IP
-- Standard ports open (80, 443, 7777, 9999)
+## 🌟 Key Features
 
-### Install Command
+### 🚀 Zero-Config App Deployments
+Deploy applications instantly right from the dashboard.
+*   **Node.js**: Multiple runtime versions supported (`18`, `20`, `22`, etc.)
+*   **Python**: Run your Flask, Django, or FastAPI apps easily.
+*   **N8n**: Setup fully-functional N8n workflow automation instances with one click.
+*   **Databases**: Instant provisioning for PostgreSQL, MySQL, Redis, and MongoDB.
+
+### 🔒 Built-in Security & Isolation
+*   **100% Docker Isolation**: Every app runs in its own tightly sandboxed container, ensuring that resource limits and data privacy are strictly enforced.
+*   **Traefik Proxy Engine**: Fully automated reverse proxy routing with zero downtime reloads.
+*   **Automated SSL/TLS**: Free Let's Encrypt certificates are provisioned automatically for every domain and addon domain. Includes a manual SSL Manager for customized certs.
+*   **HTTP/3 Support**: blazing fast, modern networking enabled by default.
+
+### 💻 Developer Tools Included
+*   **Web-based Terminal**: Get instant, secure shell access to your app's container without leaving your browser.
+*   **Advanced File Manager**: Edit, upload, and manage application files directly.
+*   **Detailed Metrics**: Live CPU, RAM, and Disk monitoring on the dashboard.
+
+### 👥 Reseller & Multi-Tenant Support
+*   **Master Panel (Port `9999`)**: Manage global settings, API keys, users, and all containers across the server.
+*   **User Panel (Port `7777`)**: Clean, minimalist interface for your clients to deploy and manage their own apps.
+
+---
+
+## ⚡ Quick Installation
+
+Getting LogicPanel up and running takes less than 2 minutes on a fresh server.
+
+**Requirements:**
+*   A clean Linux VPS (Ubuntu 20.04+, Debian 11+)
+*   Root privileges
+*   Open standard ports: `80`, `443`, `7777`, `9999`
+
+Run the following command as `root`:
 ```bash
 curl -sSL https://raw.githubusercontent.com/cyber-wahid/logicpanel/main/install.sh | sudo bash
 ```
 
----
-
-## 🔐 SSL & HTTP/3 (High-Speed Networking)
-
-✅ **Automatic SSL**: Certificates generated automatically via Let's Encrypt.  
-✅ **HTTP/3 Support**: Enabled by default for all interfaces (WebSecure, UserPanel, MasterPanel).
-
-> [!IMPORTANT]
-> To activate HTTP/3 after installation or update, ensure you restart the services:  
-> `cd /opt/logicpanel && docker compose restart traefik`
+Once installed, access your panels:
+*   **Master Admin Panel**: `https://<YOUR_IP_OR_DOMAIN>:9999`
+*   **User Dashboard**: `https://<YOUR_IP_OR_DOMAIN>:7777`
 
 ---
 
-## 🌐 Dashboard Access
+## 🏗️ Technical Stack
 
-| Interface | URL | Port | Access Level |
-|:--- |:--- |:--- |:--- |
-| **Master Panel** | `https://your-domain.com:9999` | 9999 | Admin / Reseller |
-| **User Panel** | `https://your-domain.com:7777` | 7777 | Client / End-user |
-
----
-
-## 🚀 Deployment Guide
-
-### Deploy Your First App
-1. Login to **User Panel** (Port 7777).
-2. Click **"Create Application"** and select Node.js or Python.
-3. Enter your GitHub URL and desired subdomain.
-4. Click **"Deploy"** and wait for the magic to happen! ⚡
-
-### Databases
-- Create **MySQL**, **PostgreSQL**, or **MongoDB** instances instantly via the "Databases" tab.
-- Credentials and connection strings are provided immediately upon creation.
+*   **Backend Interface**: PHP 8.2 (Slim Framework 4, Eloquent ORM)
+*   **Frontend**: Vanilla JS, optimized custom CSS (Classic UI)
+*   **Core Engine**: Docker Engine, Docker Compose
+*   **Proxy & Routing**: Traefik v3
+*   **Data Storage**: SQLite (Internal state) & MariaDB
 
 ---
 
-## 🗑️ Maintenance & Uninstallation
+## 🧹 Maintenance
 
-### 🧼 Debris Cleanup (Recommended)
-To keep your server lean by removing unused Docker images and dangling volumes:
+### Clean Up System Debris
+LogicPanel leverages Docker, which can leave unused images over time. Keep your server lean:
 ```bash
-# Safely clean system debris
 docker system prune -a --volumes
 ```
 
-### 🚮 Complete Removal (Uninstall)
-To completely remove LogicPanel and all associated data:
+### Complete Uninstallation
+*Warning: This will permanently destroy all hosted apps, databases, and LogicPanel configurations.*
 ```bash
 curl -sSL https://raw.githubusercontent.com/cyber-wahid/logicpanel/main/uninstall.sh | sudo bash
 ```
-**⚠️ Warning:** This deletes all containers, databases, and user files permanently.
 
 ---
 
-## 🛠️ Essential Commands
+## 💬 Support & Links
 
-| Action | Command |
-|:--- |:--- |
-| **View Logs** | `docker compose logs -f` |
-| **Restart Panel** | `docker compose restart` |
-| **Check SSL** | `./check-ssl.sh` |
-| **Update Panel** | `git pull && bash install.sh` |
-
----
-
-## 📞 Support & Links
-
-**Author**: [@cyber-wahid](https://github.com/cyber-wahid)  
-**Website**: [https://logicdock.cloud](https://logicdock.cloud)
-**Documentation**: [https://docs.logicdock.cloud](https://docs.logicdock.cloud)
+*   **Documentation**: [docs.logicdock.cloud](https://docs.logicdock.cloud)
+*   **Website**: [logicdock.cloud](https://logicdock.cloud)
+*   **Author**: [@cyber-wahid](https://github.com/cyber-wahid)
 
 <div align="center">
-  <b>Built for the next generation of PaaS hosting.</b>
+  <i>Simplicity is the ultimate sophistication.</i>
 </div>

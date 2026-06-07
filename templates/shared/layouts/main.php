@@ -280,7 +280,7 @@
             border-radius: var(--border-radius);
             box-shadow: var(--shadow-sm);
             animation: lpFadeInUp 0.45s ease-out both;
-            transition: box-shadow 0.25s ease;
+            transition: border-color 0s ease;
         }
 
         .card:hover {
@@ -339,8 +339,6 @@
         .stat-card:nth-child(4) { animation-delay: 0.2s; }
 
         .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow);
             border-color: var(--primary-light);
         }
 
@@ -405,20 +403,18 @@
             border: 1px solid transparent;
             cursor: pointer;
             text-decoration: none;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0s;
             position: relative;
             overflow: hidden;
         }
 
         .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            opacity: 0.95;
         }
 
         .btn:active {
-            transform: translateY(0) scale(0.97);
-            box-shadow: none;
-            transition-duration: 0.1s;
+            transition-duration: 0s;
+            opacity: 0.8;
         }
 
         .btn svg {
@@ -428,7 +424,7 @@
         }
 
         .btn:hover svg {
-            transform: scale(1.1);
+            /* Kept blank for classic feel */
         }
 
         .btn-primary {
@@ -442,7 +438,6 @@
             border-color: var(--primary-dark);
             text-decoration: none;
             color: white;
-            box-shadow: 0 4px 14px rgba(60, 135, 58, 0.4);
         }
 
         .btn-secondary {
@@ -464,7 +459,6 @@
 
         .btn-danger:hover {
             background: #d32f2f;
-            box-shadow: 0 4px 14px rgba(244, 67, 54, 0.4);
         }
 
         .btn-sm {
@@ -522,7 +516,7 @@
         }
 
         .table tr {
-            transition: background-color 0.15s ease;
+            transition: background-color 0s ease;
         }
 
         .table tr:hover td {
@@ -591,19 +585,17 @@
             border-radius: var(--border-radius);
             text-decoration: none;
             color: var(--text-primary);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0s;
         }
 
         .quick-link:hover {
             border-color: var(--primary);
-            box-shadow: 0 6px 20px rgba(60, 135, 58, 0.15);
             text-decoration: none;
-            transform: translateY(-3px);
         }
 
         .quick-link:active {
-            transform: translateY(0) scale(0.97);
-            transition-duration: 0.1s;
+            transition-duration: 0s;
+            opacity: 0.8;
         }
 
         .quick-link-icon {
@@ -616,11 +608,10 @@
             margin-bottom: 8px;
             background: rgba(60, 135, 58, 0.12);
             color: var(--primary);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0s;
         }
 
         .quick-link:hover .quick-link-icon {
-            transform: scale(1.1);
             background: rgba(60, 135, 58, 0.2);
         }
 
@@ -632,7 +623,7 @@
         .quick-link-text {
             font-size: 12px;
             font-weight: 500;
-            transition: color 0.2s ease;
+            transition: color 0s ease;
         }
 
         .quick-link:hover .quick-link-text {
@@ -751,7 +742,7 @@
             background: var(--bg-input);
             border: 1px solid var(--border-color);
             border-radius: var(--border-radius);
-            transition: border-color 0.15s ease;
+            transition: border-color 0s ease;
         }
 
         .form-control:focus {

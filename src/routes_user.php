@@ -11,6 +11,7 @@ use LogicPanel\Application\Controllers\FileController;
 use LogicPanel\Application\Controllers\BackupController;
 use LogicPanel\Application\Controllers\SystemController;
 use LogicPanel\Application\Controllers\CronController;
+use LogicPanel\Application\Controllers\DnsController;
 use LogicPanel\Application\Middleware\AuthMiddleware;
 use LogicPanel\Application\Middleware\RateLimitMiddleware;
 use LogicPanel\Application\Middleware\CorsMiddleware;
@@ -115,6 +116,19 @@ return function (App $app) {
             $group->post('/cron/{id}/toggle', [CronController::class, 'toggle']);
             $group->post('/cron/{id}/run', [CronController::class, 'run']);
 
+            // DNS Manager
+            $group->get('/dns', [DnsController::class, 'index']);
+            $group->post('/dns', [DnsController::class, 'createDomain']);
+            $group->get('/dns/{id}', [DnsController::class, 'show']);
+            $group->delete('/dns/{id}', [DnsController::class, 'deleteDomain']);
+            $group->post('/dns/{id}/records', [DnsController::class, 'createRecord']);
+            $group->delete('/dns/{id}/records/{record_id}', [DnsController::class, 'deleteRecord']);
+
+            // SSL Manager
+            $group->get('/ssl', [\LogicPanel\Application\Controllers\SslController::class, 'index']);
+            $group->get('/ssl/check', [\LogicPanel\Application\Controllers\SslController::class, 'check']);
+            $group->post('/ssl/install', [\LogicPanel\Application\Controllers\SslController::class, 'install']);
+
         })->add(AuthMiddleware::class)
             ->add(RateLimitMiddleware::class);
 
@@ -188,6 +202,19 @@ return function (App $app) {
         $group->delete('/cron/{id}', [CronController::class, 'delete']);
         $group->post('/cron/{id}/toggle', [CronController::class, 'toggle']);
         $group->post('/cron/{id}/run', [CronController::class, 'run']);
+
+        // DNS Manager
+        $group->get('/dns', [DnsController::class, 'index']);
+        $group->post('/dns', [DnsController::class, 'createDomain']);
+        $group->get('/dns/{id}', [DnsController::class, 'show']);
+        $group->delete('/dns/{id}', [DnsController::class, 'deleteDomain']);
+        $group->post('/dns/{id}/records', [DnsController::class, 'createRecord']);
+        $group->delete('/dns/{id}/records/{record_id}', [DnsController::class, 'deleteRecord']);
+
+        // SSL Manager
+        $group->get('/ssl', [\LogicPanel\Application\Controllers\SslController::class, 'index']);
+        $group->get('/ssl/check', [\LogicPanel\Application\Controllers\SslController::class, 'check']);
+        $group->post('/ssl/install', [\LogicPanel\Application\Controllers\SslController::class, 'install']);
 
         // Backup routes
         $group->get('/backups', [BackupController::class, 'index']);

@@ -238,33 +238,41 @@ class DatabaseController
      */
     private function decryptPassword(string $encrypted): string
     {
-        $key = $this->getEncryptionKey();
-        $decoded = base64_decode($encrypted);
+        try {
+            $key = $this->getEncryptionKey();
+            $decoded = base64_decode($encrypted, true); // Strict decode
 
-        if ($decoded === false || strlen($decoded) < SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) {
-            // Fallback for legacy base64-only passwords
+            if ($decoded === false || strlen($decoded) < SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) {
+                // Not valid base64 or too short to contain nonce, probably plaintext
+                return $encrypted;
+            }
+
+            // Extract nonce and ciphertext
+            $nonce = substr($decoded, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+            $ciphertext = substr($decoded, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+
+            // Decrypt
+            $plaintext = sodium_crypto_secretbox_open($ciphertext, $nonce, $key);
+
+            // Clear the key from memory
             sodium_memzero($key);
-            $legacy = base64_decode($encrypted);
-            return $legacy !== false ? $legacy : $encrypted;
+
+            if ($plaintext === false) {
+                // Decryption failed (wrong key or corrupted). 
+                // Don't return raw bytes as they will crash json_encode.
+                // If it's a legacy base64 password, decode it, but ensure it's valid UTF-8.
+                $legacy = base64_decode($encrypted, true);
+                if ($legacy !== false && mb_check_encoding($legacy, 'UTF-8')) {
+                    return $legacy;
+                }
+                return $encrypted; // Assume it was plaintext all along
+            }
+
+            return $plaintext;
+        } catch (\Exception $e) {
+            // If getEncryptionKey fails or any other error, return the original string safely
+            return $encrypted;
         }
-
-        // Extract nonce and ciphertext
-        $nonce = substr($decoded, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
-        $ciphertext = substr($decoded, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
-
-        // Decrypt
-        $plaintext = sodium_crypto_secretbox_open($ciphertext, $nonce, $key);
-
-        // Clear the key from memory
-        sodium_memzero($key);
-
-        if ($plaintext === false) {
-            // Fallback for legacy base64-only passwords
-            $legacy = base64_decode($encrypted);
-            return $legacy !== false ? $legacy : $encrypted;
-        }
-
-        return $plaintext;
     }
 
     /**
